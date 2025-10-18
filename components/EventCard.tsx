@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { QRCodeSVG } from 'qrcode.react';
-import { QrCode } from 'lucide-react';
+import { QrCode, Copy, Check } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -62,12 +62,23 @@ const statusConfig = {
  */
 export function EventCard({ event, className = '' }: EventCardProps) {
   const [showQRCode, setShowQRCode] = useState(false);
+  const [copied, setCopied] = useState(false);
   const config = statusConfig[event.status];
   
   // Get full URL for QR code
   const registrationUrl = typeof window !== 'undefined' 
     ? `${window.location.origin}/r/${event.id}`
     : '';
+
+  const handleCopyUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(registrationUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000); // Reset after 2 seconds
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
 
   const getPrimaryAction = () => {
     if (event.status === 'closed') {
@@ -204,7 +215,10 @@ export function EventCard({ event, className = '' }: EventCardProps) {
       </CardContent>
 
       {/* QR Code Modal */}
-      <Dialog open={showQRCode} onOpenChange={setShowQRCode}>
+      <Dialog open={showQRCode} onOpenChange={(open) => {
+        setShowQRCode(open);
+        if (!open) setCopied(false); // Reset copied state when modal closes
+      }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="text-center">Register with QR Code</DialogTitle>
@@ -229,11 +243,31 @@ export function EventCard({ event, className = '' }: EventCardProps) {
                 Opens: {formatEventTime(event.votingOpensAt)}
               </p>
             </div>
-            {/* URL Display */}
-            <div className="w-full">
-              <p className="text-xs text-center text-muted-foreground break-all px-4">
-                {registrationUrl}
-              </p>
+            {/* URL Display with Copy Button */}
+            <div className="w-full px-4">
+              <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+                <p className="text-xs text-muted-foreground break-all flex-1">
+                  {registrationUrl}
+                </p>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0 h-8 w-8"
+                  onClick={handleCopyUrl}
+                  aria-label="Copy URL"
+                >
+                  {copied ? (
+                    <Check className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              {copied && (
+                <p className="text-xs text-green-600 text-center mt-2">
+                  Copied to clipboard!
+                </p>
+              )}
             </div>
           </div>
         </DialogContent>

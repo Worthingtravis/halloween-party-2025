@@ -12,8 +12,8 @@ export async function POST(request: NextRequest) {
     const eventId = formData.get('eventId') as string;
     const attendeeId = formData.get('attendeeId') as string;
     const costumeTitle = formData.get('costumeTitle') as string;
-    const photoSelfie = formData.get('photoSelfie') as File;
-    const photoFull = formData.get('photoFull') as File;
+    const photoSelfie = formData.get('photoSelfie') as File | null;
+    const photoFull = formData.get('photoFull') as File | null;
 
     // Validate inputs
     if (!eventId || !attendeeId || !costumeTitle) {
@@ -32,75 +32,106 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate files
-    if (!photoSelfie || !photoFull) {
+    // Check if this is an update (existing registration)
+    const existingRegistration = await prisma.registration.findFirst({
+      where: {
+        eventId,
+        attendeeId,
+      },
+    });
+
+    // For new registrations, both photos are required
+    if (!existingRegistration && (!photoSelfie || !photoFull)) {
       return NextResponse.json(
-        { success: false, error: 'Both photos required' },
+        { success: false, error: 'Both photos required for new registration' },
         { status: 400 }
       );
     }
 
-    if (photoSelfie.size > 6 * 1024 * 1024 || photoFull.size > 6 * 1024 * 1024) {
+    // Validate file sizes if provided
+    if (photoSelfie && photoSelfie.size > 6 * 1024 * 1024) {
       return NextResponse.json(
-        { success: false, error: 'FILE_TOO_LARGE' },
+        { success: false, error: 'Selfie photo too large (max 6MB)' },
         { status: 413 }
       );
     }
 
-    // Process images
-    const selfieBuffer = Buffer.from(await photoSelfie.arrayBuffer());
-    const fullBuffer = Buffer.from(await photoFull.arrayBuffer());
+    if (photoFull && photoFull.size > 6 * 1024 * 1024) {
+      return NextResponse.json(
+        { success: false, error: 'Full photo too large (max 6MB)' },
+        { status: 413 }
+      );
+    }
 
-    // Generate thumbnails
-    const selfieThumbnail = await generateThumbnail(selfieBuffer);
-    const fullThumbnail = await generateThumbnail(fullBuffer);
-
-    const registrationId = crypto.randomUUID();
-    const selfieFilename = `${registrationId}_selfie.jpg`;
-    const selfieThumbFilename = `${registrationId}_selfie_thumb.jpg`;
-    const fullFilename = `${registrationId}_full.jpg`;
-    const fullThumbFilename = `${registrationId}_full_thumb.jpg`;
-
-    let photoSelfieUrl: string;
-    let photoFullUrl: string;
+    // Use existing registration ID if updating, otherwise create new
+    const registrationId = existingRegistration?.id || crypto.randomUUID();
+    
+    // Start with existing photo URLs if this is an update
+    let photoSelfieUrl = existingRegistration?.photoSelfieUrl || '';
+    let photoFullUrl = existingRegistration?.photoFullUrl || '';
 
     // Detect if we're in a serverless environment (Vercel)
     const isServerless = process.env.VERCEL || process.env.BLOB_READ_WRITE_TOKEN;
 
-    if (isServerless) {
-      // Use Vercel Blob Storage for serverless environments
-      if (!process.env.BLOB_READ_WRITE_TOKEN) {
-        throw new Error('BLOB_READ_WRITE_TOKEN environment variable is required for file uploads in production');
+    // Process new selfie photo if provided
+    if (photoSelfie) {
+      const selfieBuffer = Buffer.from(await photoSelfie.arrayBuffer());
+      const selfieThumbnail = await generateThumbnail(selfieBuffer);
+      const selfieFilename = `${registrationId}_selfie.jpg`;
+      const selfieThumbFilename = `${registrationId}_selfie_thumb.jpg`;
+
+      if (isServerless) {
+        if (!process.env.BLOB_READ_WRITE_TOKEN) {
+          throw new Error('BLOB_READ_WRITE_TOKEN environment variable is required for file uploads in production');
+        }
+
+        const selfieBlob = await put(`${eventId}/${selfieFilename}`, selfieBuffer, { access: 'public' });
+        await put(`${eventId}/${selfieThumbFilename}`, selfieThumbnail, { access: 'public' });
+        photoSelfieUrl = selfieBlob.url;
+      } else {
+        const uploadDir = path.join(process.cwd(), 'public', 'uploads', eventId);
+        await mkdir(uploadDir, { recursive: true });
+        await writeFile(path.join(uploadDir, selfieFilename), selfieBuffer);
+        await writeFile(path.join(uploadDir, selfieThumbFilename), selfieThumbnail);
+        photoSelfieUrl = `/uploads/${eventId}/${selfieFilename}`;
       }
-
-      const [selfieBlob, selfieThumbBlob, fullBlob, fullThumbBlob] = await Promise.all([
-        put(`${eventId}/${selfieFilename}`, selfieBuffer, { access: 'public' }),
-        put(`${eventId}/${selfieThumbFilename}`, selfieThumbnail, { access: 'public' }),
-        put(`${eventId}/${fullFilename}`, fullBuffer, { access: 'public' }),
-        put(`${eventId}/${fullThumbFilename}`, fullThumbnail, { access: 'public' }),
-      ]);
-
-      photoSelfieUrl = selfieBlob.url;
-      photoFullUrl = fullBlob.url;
-    } else {
-      // Use local filesystem for development
-      const uploadDir = path.join(process.cwd(), 'public', 'uploads', eventId);
-      await mkdir(uploadDir, { recursive: true });
-
-      await Promise.all([
-        writeFile(path.join(uploadDir, selfieFilename), selfieBuffer),
-        writeFile(path.join(uploadDir, selfieThumbFilename), selfieThumbnail),
-        writeFile(path.join(uploadDir, fullFilename), fullBuffer),
-        writeFile(path.join(uploadDir, fullThumbFilename), fullThumbnail),
-      ]);
-
-      photoSelfieUrl = `/uploads/${eventId}/${selfieFilename}`;
-      photoFullUrl = `/uploads/${eventId}/${fullFilename}`;
     }
 
-    // Save to database
-    const registration = await prisma.registration.create({
-      data: {
+    // Process new full photo if provided
+    if (photoFull) {
+      const fullBuffer = Buffer.from(await photoFull.arrayBuffer());
+      const fullThumbnail = await generateThumbnail(fullBuffer);
+      const fullFilename = `${registrationId}_full.jpg`;
+      const fullThumbFilename = `${registrationId}_full_thumb.jpg`;
+
+      if (isServerless) {
+        if (!process.env.BLOB_READ_WRITE_TOKEN) {
+          throw new Error('BLOB_READ_WRITE_TOKEN environment variable is required for file uploads in production');
+        }
+
+        const fullBlob = await put(`${eventId}/${fullFilename}`, fullBuffer, { access: 'public' });
+        await put(`${eventId}/${fullThumbFilename}`, fullThumbnail, { access: 'public' });
+        photoFullUrl = fullBlob.url;
+      } else {
+        const uploadDir = path.join(process.cwd(), 'public', 'uploads', eventId);
+        await mkdir(uploadDir, { recursive: true });
+        await writeFile(path.join(uploadDir, fullFilename), fullBuffer);
+        await writeFile(path.join(uploadDir, fullThumbFilename), fullThumbnail);
+        photoFullUrl = `/uploads/${eventId}/${fullFilename}`;
+      }
+    }
+
+    // Save to database (upsert)
+    const registration = await prisma.registration.upsert({
+      where: {
+        id: registrationId,
+      },
+      update: {
+        costumeTitle,
+        photoSelfieUrl,
+        photoFullUrl,
+      },
+      create: {
         id: registrationId,
         eventId,
         attendeeId,
