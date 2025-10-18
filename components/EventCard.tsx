@@ -1,9 +1,14 @@
-import React from 'react';
+'use client';
+
+import React, { useState } from 'react';
 import Link from 'next/link';
+import { QRCodeSVG } from 'qrcode.react';
+import { QrCode } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { formatEventTime } from '@/lib/timezone';
 
 export type EventStatus = 'upcoming' | 'registration' | 'voting' | 'closed';
@@ -56,7 +61,13 @@ const statusConfig = {
  * EventCard - Display event with status and action buttons
  */
 export function EventCard({ event, className = '' }: EventCardProps) {
+  const [showQRCode, setShowQRCode] = useState(false);
   const config = statusConfig[event.status];
+  
+  // Get full URL for QR code
+  const registrationUrl = typeof window !== 'undefined' 
+    ? `${window.location.origin}/r/${event.id}`
+    : '';
 
   const getPrimaryAction = () => {
     if (event.status === 'closed') {
@@ -162,6 +173,19 @@ export function EventCard({ event, className = '' }: EventCardProps) {
           <Button asChild className="flex-1 min-h-[44px] sm:min-h-[40px]" variant={action.variant}>
             <Link href={action.href}>{action.label}</Link>
           </Button>
+          
+          {/* QR Code Button - Always visible */}
+          <Button
+            variant="outline"
+            size="icon"
+            className="min-h-[44px] min-w-[44px] sm:min-h-[40px] sm:min-w-[40px]"
+            onClick={() => setShowQRCode(true)}
+            aria-label="Show QR code"
+          >
+            <QrCode className="h-5 w-5" />
+          </Button>
+          
+          {/* Gallery Button */}
           {event.status !== 'closed' && 
            event.registrationCount > 0 && 
            !(event.status === 'voting' && event.hasOwnRegistration) && (
@@ -178,6 +202,42 @@ export function EventCard({ event, className = '' }: EventCardProps) {
           )}
         </div>
       </CardContent>
+
+      {/* QR Code Modal */}
+      <Dialog open={showQRCode} onOpenChange={setShowQRCode}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center">Register with QR Code</DialogTitle>
+            <DialogDescription className="text-center">
+              Scan this code to register your costume for {event.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-6 py-6">
+            {/* QR Code */}
+            <div className="bg-white p-4 rounded-lg">
+              <QRCodeSVG
+                value={registrationUrl}
+                size={256}
+                level="M"
+                includeMargin={false}
+              />
+            </div>
+            {/* Event Name */}
+            <div className="text-center space-y-2">
+              <p className="font-semibold text-lg">{event.name}</p>
+              <p className="text-sm text-muted-foreground">
+                Opens: {formatEventTime(event.votingOpensAt)}
+              </p>
+            </div>
+            {/* URL Display */}
+            <div className="w-full">
+              <p className="text-xs text-center text-muted-foreground break-all px-4">
+                {registrationUrl}
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
