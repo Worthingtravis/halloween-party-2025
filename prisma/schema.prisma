@@ -1,0 +1,94 @@
+// Halloween Costume Contest - Prisma Schema
+// Based on HALLOWEEN_APP_SPEC.md Data Model Contracts
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("POSTGRES_PRISMA_URL")      // Pooled connection for queries
+  directUrl = env("POSTGRES_URL_NON_POOLING") // Direct connection for migrations
+}
+
+// Events table
+model Event {
+  id              String         @id @default(uuid()) @db.Uuid
+  name            String         @db.VarChar(255)
+  votingOpensAt   DateTime       @db.Timestamptz(6)
+  votingClosesAt  DateTime?      @db.Timestamptz(6)
+  isPublicGallery Boolean        @default(false)
+  createdAt       DateTime       @default(now()) @db.Timestamptz(6)
+  
+  // Relations
+  attendees       Attendee[]
+  registrations   Registration[]
+  votes           Vote[]
+
+  @@index([votingOpensAt], name: "idx_events_opens_at")
+}
+
+// Attendees table
+model Attendee {
+  id          String         @id @default(uuid()) @db.Uuid
+  eventId     String         @db.Uuid
+  displayName String         @db.VarChar(255)
+  createdAt   DateTime       @default(now()) @db.Timestamptz(6)
+  
+  // Relations
+  event         Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  registrations Registration[]
+  votes         Vote[]
+
+  @@index([eventId], name: "idx_attendees_event")
+}
+
+// Registrations table
+model Registration {
+  id             String   @id @default(uuid()) @db.Uuid
+  eventId        String   @db.Uuid
+  attendeeId     String   @db.Uuid
+  costumeTitle   String   @db.VarChar(255)
+  photoSelfieUrl String   @db.Text
+  photoFullUrl   String   @db.Text
+  aiVariantUrl   String?  @db.Text
+  isApproved     Boolean  @default(true)
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+  
+  // Relations
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  attendee  Attendee @relation(fields: [attendeeId], references: [id], onDelete: Cascade)
+  votes     Vote[]
+
+  @@index([eventId], name: "idx_reg_event")
+  @@index([eventId, isApproved], name: "idx_reg_event_approved")
+  @@index([attendeeId], name: "idx_reg_attendee")
+}
+
+// Votes table
+model Vote {
+  id                   String       @id @default(uuid()) @db.Uuid
+  eventId              String       @db.Uuid
+  voterAttendeeId      String       @db.Uuid
+  category             VoteCategory
+  targetRegistrationId String       @db.Uuid
+  createdAt            DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime     @default(now()) @updatedAt @db.Timestamptz(6)
+  
+  // Relations
+  event              Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  voterAttendee      Attendee     @relation(fields: [voterAttendeeId], references: [id], onDelete: Cascade)
+  targetRegistration Registration @relation(fields: [targetRegistrationId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, voterAttendeeId, category], name: "votes_unique")
+  @@index([eventId, category, targetRegistrationId], name: "idx_votes_target")
+}
+
+// Category enum (matches spec: 'funniest' | 'scariest' | 'cutest' | 'personalFavorite')
+enum VoteCategory {
+  funniest
+  scariest
+  cutest
+  personalFavorite
+}
