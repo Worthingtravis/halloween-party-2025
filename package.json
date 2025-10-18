@@ -11,7 +11,8 @@
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
     "seed:events": "tsx scripts/seed-events.ts",
-    "seed": "tsx scripts/seed-complete.ts"
+    "seed": "tsx scripts/seed-complete.ts",
+    "seed:three": "tsx scripts/seed-three-contests.ts"
   },
   "keywords": [],
   "author": "",

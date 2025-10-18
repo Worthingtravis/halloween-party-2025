@@ -118,14 +118,22 @@ export function CostumeCard({
             />
           </div>
           <CardHeader className="p-4 sm:p-6">
-            <CardTitle className="text-xl sm:text-2xl line-clamp-2">
-              {registration.costumeTitle}
-            </CardTitle>
-            {showDisplayName && (
-              <p className="text-sm sm:text-base text-muted-foreground truncate">
-                {registration.displayName}
-              </p>
-            )}
+            <div className="flex items-start gap-3">
+              <Avatar className="h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0">
+                <AvatarImage src={registration.photoSelfieUrl} alt={registration.displayName} />
+                <AvatarFallback>{registration.displayName[0]}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <CardTitle className="text-xl sm:text-2xl line-clamp-2">
+                  {registration.costumeTitle}
+                </CardTitle>
+                {showDisplayName && (
+                  <p className="text-sm sm:text-base text-muted-foreground truncate">
+                    {registration.displayName}
+                  </p>
+                )}
+              </div>
+            </div>
           </CardHeader>
         </Card>
       </motion.div>

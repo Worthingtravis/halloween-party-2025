@@ -39,6 +39,34 @@ pnpm seed
 
 ---
 
+### 🎯 `pnpm seed:three` - Three Contests Setup
+
+**File:** `seed-three-contests.ts`
+
+Creates a clean slate with exactly 3 contests in different states:
+
+1. **🔜 Starting Soon** - Contest opens in 2 days (EMPTY - no registrations)
+2. **🗳️ In Progress** - Voting opened 1 hour ago (EMPTY - ready for new registrations)
+3. **🏁 Ended** - Voting closed yesterday (FULL DATA - 13 costumes with votes and winners)
+
+**Features:**
+- ✅ Clears ALL existing data first
+- ✅ Only the ended contest has mock data
+- ✅ Perfect for testing different contest states
+- ✅ Clean setup for demos and development
+
+**Usage:**
+```bash
+pnpm seed:three
+```
+
+**Output:**
+- Summary of all 3 contests created
+- Winners displayed for the ended contest
+- Clear indication of which contests have data
+
+---
+
 ### 📅 `pnpm seed:events` - Events Only
 
 **File:** `seed-events.ts`
