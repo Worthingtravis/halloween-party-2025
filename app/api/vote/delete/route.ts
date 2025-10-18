@@ -53,13 +53,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Delete the vote
-    await prisma.vote.deleteMany({
-      where: {
-        eventId,
-        voterAttendeeId,
-        category,
-      },
+    // Use transaction to ensure atomicity
+    await prisma.$transaction(async (tx) => {
+      // Delete the vote
+      await tx.vote.deleteMany({
+        where: {
+          eventId,
+          voterAttendeeId,
+          category,
+        },
+      });
+    }, {
+      isolationLevel: 'Serializable',
+      maxWait: 5000,
+      timeout: 10000,
     });
 
     return NextResponse.json({
@@ -68,8 +75,20 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Unvote error:', error);
+    
+    // Handle specific Prisma errors
+    if (error && typeof error === 'object' && 'code' in error) {
+      // P2034: Transaction conflict (serialization failure)
+      if (error.code === 'P2034') {
+        return NextResponse.json(
+          { success: false, error: 'CONCURRENT_REQUEST', message: 'Please try again' },
+          { status: 409 }
+        );
+      }
+    }
+    
     return NextResponse.json(
-      { success: false, error: 'UNKNOWN_ERROR' },
+      { success: false, error: 'UNKNOWN_ERROR', message: 'Failed to remove vote' },
       { status: 500 }
     );
   }

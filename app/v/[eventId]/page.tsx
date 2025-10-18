@@ -21,7 +21,7 @@ import { CATEGORIES, Category, CATEGORY_CONFIG } from '@/lib/validation';
 import { AnimatePresence } from 'framer-motion';
 import { Check } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useState, useRef } from 'react';
 
 interface Registration {
   id: string;
@@ -67,8 +67,12 @@ export default function VotingPage({ params }: VotingPageProps) {
   const [votingError, setVotingError] = useState<string | null>(null);
   const [hasOwnRegistration, setHasOwnRegistration] = useState(false);
   const [myPicksOpen, setMyPicksOpen] = useState(false);
+  const [isProcessingVote, setIsProcessingVote] = useState(false);
 
   const attendeeId = getAttendeeCookieClient(eventId);
+
+  // Debouncing ref
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Compute preview mode from existing state (avoid re-render loop)
   const isPreviewMode =
@@ -244,6 +248,11 @@ export default function VotingPage({ params }: VotingPageProps) {
   };
 
   const handleCategorySwitch = async (newCategory: Category) => {
+    // Prevent multiple simultaneous requests
+    if (isProcessingVote) {
+      return;
+    }
+
     // Clear any errors when switching categories
     setVotingError(null);
 
@@ -263,6 +272,9 @@ export default function VotingPage({ params }: VotingPageProps) {
       setSelectedCategory(newCategory);
       return;
     }
+
+    // Mark as processing to prevent duplicate requests
+    setIsProcessingVote(true);
 
     // Optimistically update UI: set the vote for the new category AND switch category immediately
     const previousVotes = { ...myVotes };
@@ -321,8 +333,35 @@ export default function VotingPage({ params }: VotingPageProps) {
       setMyVotes(previousVotes);
       setSelectedCategory(previousCategory);
       setVotingError(err instanceof Error ? err.message : 'Failed to vote');
+    } finally {
+      // Allow new requests after a short delay
+      setTimeout(() => {
+        setIsProcessingVote(false);
+      }, 300);
     }
   };
+
+  // Debounced version of handleCategorySwitch
+  const debouncedCategorySwitch = (newCategory: Category) => {
+    // Clear existing timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    // Set new timer
+    debounceTimerRef.current = setTimeout(() => {
+      handleCategorySwitch(newCategory);
+    }, 300); // 300ms debounce delay
+  };
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -500,9 +539,10 @@ export default function VotingPage({ params }: VotingPageProps) {
                   return (
                     <Button
                       key={cat}
-                      onClick={() => handleCategorySwitch(cat)}
+                      onClick={() => debouncedCategorySwitch(cat)}
                       variant={currentCostumeVotedInThisCategory ? 'default' : 'outline'}
                       size="sm"
+                      disabled={isProcessingVote}
                       className={cn(
                         'flex-1 touch-manipulation gap-1.5 min-h-[44px] relative transition-all',
                         currentCostumeVotedInThisCategory && 'bg-green-600 hover:bg-green-700 border-green-600',

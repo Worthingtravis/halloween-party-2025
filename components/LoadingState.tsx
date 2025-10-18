@@ -1,6 +1,10 @@
 import React from 'react';
+import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
+
+// Preload ghost image
+const ghostImage = '/ghost.png';
 
 export type LoadingVariant = 'spinner' | 'skeleton' | 'progress';
 export type LoadingSize = 'sm' | 'md' | 'lg';
@@ -14,9 +18,9 @@ interface LoadingStateProps {
 }
 
 const sizeClasses = {
-  sm: 'h-4 w-4',
-  md: 'h-8 w-8',
-  lg: 'h-12 w-12',
+  sm: { width: 32, height: 32 },
+  md: { width: 64, height: 64 },
+  lg: { width: 96, height: 96 },
 };
 
 /**
@@ -37,13 +41,22 @@ export function LoadingState({
   className = '',
 }: LoadingStateProps) {
   if (variant === 'spinner') {
+    const dimensions = sizeClasses[size];
     return (
       <div className={`flex flex-col items-center justify-center gap-2 ${className}`}>
         <div
-          className={`${sizeClasses[size]} animate-spin rounded-full border-2 border-gray-300 border-t-primary`}
+          className="animate-spin"
           role="status"
           aria-label="Loading"
-        />
+        >
+          <Image
+            src={ghostImage}
+            alt="Loading..."
+            width={dimensions.width}
+            height={dimensions.height}
+            priority
+          />
+        </div>
         {message && <p className="text-sm text-muted-foreground">{message}</p>}
       </div>
     );

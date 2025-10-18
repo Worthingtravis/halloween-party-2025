@@ -7,9 +7,9 @@ import { z } from 'zod';
 
 const requestSchema = z.object({
   eventId: eventIdSchema,
-  voterAttendeeId: z.string().uuid(),
+  voterAttendeeId: z.uuid(),
   category: categorySchema,
-  targetRegistrationId: z.string().uuid(),
+  targetRegistrationId: z.uuid(),
 });
 
 export async function POST(request: NextRequest) {
@@ -74,36 +74,111 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Upsert vote (replaces previous vote in same category)
-    const vote = await prisma.vote.upsert({
-      where: {
-        votes_unique: {
+    // Use transaction to ensure atomicity and prevent race conditions
+    const vote = await prisma.$transaction(async (tx) => {
+      // Check if this voter has already voted for this costume in ANY other category
+      const existingVoteForSameCostume = await tx.vote.findFirst({
+        where: {
           eventId,
           voterAttendeeId,
-          category,
+          targetRegistrationId,
+          category: {
+            not: category, // Different category
+          },
         },
-      },
-      update: {
-        targetRegistrationId,
-        updatedAt: new Date(),
-      },
-      create: {
-        id: crypto.randomUUID(),
-        eventId,
-        voterAttendeeId,
-        category,
-        targetRegistrationId,
-      },
+      });
+
+      if (existingVoteForSameCostume) {
+        // Throw an error that will be caught and handled
+        throw new Error(`DUPLICATE_COSTUME_VOTE:${existingVoteForSameCostume.category}`);
+      }
+
+      // Check if vote already exists for this attendee in this category
+      const existingVote = await tx.vote.findUnique({
+        where: {
+          votes_unique: {
+            eventId,
+            voterAttendeeId,
+            category,
+          },
+        },
+      });
+
+      if (existingVote) {
+        // Update existing vote
+        return await tx.vote.update({
+          where: {
+            votes_unique: {
+              eventId,
+              voterAttendeeId,
+              category,
+            },
+          },
+          data: {
+            targetRegistrationId,
+            updatedAt: new Date(),
+          },
+        });
+      } else {
+        // Create new vote
+        return await tx.vote.create({
+          data: {
+            id: crypto.randomUUID(),
+            eventId,
+            voterAttendeeId,
+            category,
+            targetRegistrationId,
+          },
+        });
+      }
+    }, {
+      isolationLevel: 'Serializable', // Prevent race conditions
+      maxWait: 5000, // Maximum wait time in ms
+      timeout: 10000, // Maximum execution time in ms
     });
 
     return NextResponse.json({
       success: true,
       message: 'Vote recorded',
+      voteId: vote.id,
     });
   } catch (error) {
     console.error('Vote error:', error);
+    
+    // Handle custom duplicate costume vote error
+    if (error instanceof Error && error.message.startsWith('DUPLICATE_COSTUME_VOTE:')) {
+      const existingCategory = error.message.split(':')[1];
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'DUPLICATE_COSTUME_VOTE', 
+          message: `You have already voted for this costume in the "${existingCategory}" category. Please remove that vote first.`,
+          existingCategory,
+        },
+        { status: 409 }
+      );
+    }
+    
+    // Handle specific Prisma errors
+    if (error && typeof error === 'object' && 'code' in error) {
+      // P2002: Unique constraint violation
+      if (error.code === 'P2002') {
+        return NextResponse.json(
+          { success: false, error: 'DUPLICATE_VOTE', message: 'Vote already exists for this category' },
+          { status: 409 }
+        );
+      }
+      // P2034: Transaction conflict (serialization failure)
+      if (error.code === 'P2034') {
+        return NextResponse.json(
+          { success: false, error: 'CONCURRENT_REQUEST', message: 'Please try again' },
+          { status: 409 }
+        );
+      }
+    }
+    
     return NextResponse.json(
-      { success: false, error: 'UNKNOWN_ERROR' },
+      { success: false, error: 'UNKNOWN_ERROR', message: 'Failed to record vote' },
       { status: 500 }
     );
   }
