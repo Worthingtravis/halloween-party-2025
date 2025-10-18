@@ -18,10 +18,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   userScalable: true,
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: '#222222' },
-  ],
+  themeColor: '#222222', // Force dark theme
 }
 
 export default function RootLayout({
@@ -30,7 +27,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="touch-manipulation">
+    <html lang="en" className="dark touch-manipulation">
       <body className="min-h-screen antialiased">
         <Navbar />
         {children}

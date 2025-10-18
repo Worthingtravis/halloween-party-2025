@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { formatEventTime } from '@/lib/timezone';
 
 export type EventStatus = 'upcoming' | 'registration' | 'voting' | 'closed';
@@ -13,6 +14,11 @@ interface Event {
   votingOpensAt: string;
   votingClosesAt?: string | null;
   registrationCount: number;
+  registrationAvatars: Array<{
+    id: string;
+    photoSelfieUrl: string;
+    displayName: string;
+  }>;
   status: EventStatus;
   votingOpen: boolean;
   hasOwnRegistration: boolean;
@@ -106,13 +112,40 @@ export function EventCard({ event, className = '' }: EventCardProps) {
       </CardHeader>
 
       <CardContent className="space-y-3 sm:space-y-4">
-        {/* Stats */}
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-1.5">
-            <span className="text-base">👥</span>
-            <span className="text-xs sm:text-sm">
-              {event.registrationCount} {event.registrationCount === 1 ? 'costume' : 'costumes'}
-            </span>
+        {/* Stats - Overlapping Avatars */}
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div className="flex items-center gap-2">
+            {event.registrationCount > 0 ? (
+              <>
+                <div className="flex -space-x-2">
+                  {event.registrationAvatars.slice(0, 4).map((avatar) => (
+                    <Avatar 
+                      key={avatar.id} 
+                      className="h-8 w-8 border-2 border-background ring-1 ring-border"
+                    >
+                      <AvatarImage 
+                        src={avatar.photoSelfieUrl} 
+                        alt={avatar.displayName}
+                        className="object-cover"
+                      />
+                      <AvatarFallback className="text-xs">
+                        {avatar.displayName.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  ))}
+                  {event.registrationCount > 4 && (
+                    <div className="h-8 w-8 rounded-full border-2 border-background ring-1 ring-border bg-muted flex items-center justify-center text-xs font-medium">
+                      +{event.registrationCount - 4}
+                    </div>
+                  )}
+                </div>
+                <span className="text-xs sm:text-sm ml-1">
+                  {event.registrationCount} {event.registrationCount === 1 ? 'costume' : 'costumes'}
+                </span>
+              </>
+            ) : (
+              <span className="text-xs sm:text-sm">No costumes yet</span>
+            )}
           </div>
           {event.votingOpen && (
             <div className="flex items-center gap-1.5">

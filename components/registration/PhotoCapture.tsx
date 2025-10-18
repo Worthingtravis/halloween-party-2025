@@ -93,10 +93,11 @@ export function PhotoCapture({ type, onCapture, value }: PhotoCaptureProps) {
       <input
         ref={inputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp"
+        accept="image/*"
         capture={cameraType}
         onChange={handleFileSelect}
         className="hidden"
+        aria-label={`Capture ${type} photo`}
       />
 
       {preview && !loading ? (
@@ -127,14 +128,15 @@ export function PhotoCapture({ type, onCapture, value }: PhotoCaptureProps) {
         /* Capture State */
         <div className="space-y-3">
           <Button
+            type="button"
             onClick={() => inputRef.current?.click()}
             className="w-full"
             size="lg"
           >
-            📸 {label}
+            📸 Take {label}
           </Button>
           <p className="text-xs text-center text-muted-foreground">
-            Tap to use camera or upload a photo
+            Camera will open automatically • Or choose from gallery
           </p>
         </div>
       )}

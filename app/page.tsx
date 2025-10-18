@@ -13,6 +13,11 @@ interface Event {
   votingOpensAt: string;
   votingClosesAt?: string | null;
   registrationCount: number;
+  registrationAvatars: Array<{
+    id: string;
+    photoSelfieUrl: string;
+    displayName: string;
+  }>;
   status: EventStatus;
   votingOpen: boolean;
   hasOwnRegistration: boolean;

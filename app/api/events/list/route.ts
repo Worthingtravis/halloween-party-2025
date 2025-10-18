@@ -21,8 +21,22 @@ export async function GET(request: NextRequest) {
           },
         },
         registrations: {
+          where: {
+            isApproved: true,
+          },
           select: {
+            id: true,
             attendeeId: true,
+            photoSelfieUrl: true,
+            attendee: {
+              select: {
+                displayName: true,
+              },
+            },
+          },
+          take: 5, // Only fetch first 5 for avatars
+          orderBy: {
+            createdAt: 'asc',
           },
         },
       },
@@ -67,6 +81,11 @@ export async function GET(request: NextRequest) {
         votingClosesAt: event.votingClosesAt?.toISOString() || null,
         isPublicGallery: event.isPublicGallery,
         registrationCount: event._count.registrations,
+        registrationAvatars: event.registrations.map(reg => ({
+          id: reg.id,
+          photoSelfieUrl: reg.photoSelfieUrl,
+          displayName: reg.attendee.displayName,
+        })),
         status,
         votingOpen: votingStatus,
         hasOwnRegistration,
