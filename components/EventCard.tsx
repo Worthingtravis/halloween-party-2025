@@ -161,9 +161,7 @@ export function EventCard({ event, className = '' }: EventCardProps) {
                     </div>
                   )}
                 </div>
-                <span className="text-xs sm:text-sm ml-1">
-                  {event.registrationCount} {event.registrationCount === 1 ? 'costume' : 'costumes'}
-                </span>
+               
               </>
             ) : (
               <span className="text-xs sm:text-sm">No costumes yet</span>

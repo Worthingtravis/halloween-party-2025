@@ -8,7 +8,7 @@ import { cookies } from 'next/headers';
 export async function setAttendeeCookie(eventId: string, attendeeId: string): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.set(`attendee_${eventId}`, attendeeId, {
-    maxAge: 2592000, // 30 days
+    maxAge: 31536000000, // ~1000 years (essentially permanent)
     sameSite: 'lax',
     secure: true,
     path: '/',
