@@ -25,5 +25,7 @@ logs/
 # OS generated files
 Thumbs.db
 
+# Uploaded images
+public/uploads/
 
 /generated/prisma
