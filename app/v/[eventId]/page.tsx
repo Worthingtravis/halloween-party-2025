@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { CostumeCard } from '@/components/CostumeCard';
 import { CategoryBadge } from '@/components/CategoryBadge';
@@ -10,7 +10,7 @@ import { ErrorState } from '@/components/ErrorState';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Category, CATEGORIES } from '@/lib/validation';
-import { getAttendeeCookieClient } from '@/lib/cookies';
+import { getAttendeeCookieClient } from '@/lib/cookies-client';
 
 interface Registration {
   id: string;
@@ -28,12 +28,12 @@ interface EventStatusResponse {
 }
 
 interface VotingPageProps {
-  params: { eventId: string };
+  params: Promise<{ eventId: string }>;
 }
 
 export default function VotingPage({ params }: VotingPageProps) {
   const router = useRouter();
-  const { eventId } = params;
+  const { eventId } = use(params);
 
   // Data state
   const [registrations, setRegistrations] = useState<Registration[]>([]);

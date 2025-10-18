@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getAttendeeId } from '@/lib/cookies';
+import { getAttendeeId } from '@/lib/cookies-server';
 import { generateThumbnail } from '@/lib/image-server';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';

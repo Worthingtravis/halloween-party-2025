@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getAttendeeId } from '@/lib/cookies';
+import { getAttendeeId } from '@/lib/cookies-server';
 import { isVotingOpen } from '@/lib/timezone';
 import { categorySchema, eventIdSchema } from '@/lib/validation';
 import { z } from 'zod';

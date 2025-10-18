@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import { CostumeCard } from '@/components/CostumeCard';
 import { CategoryBadge } from '@/components/CategoryBadge';
 import { LoadingState } from '@/components/LoadingState';
@@ -24,11 +24,11 @@ interface CategoryWinner {
 }
 
 interface ResultsPageProps {
-  params: { eventId: string };
+  params: Promise<{ eventId: string }>;
 }
 
 export default function ResultsPage({ params }: ResultsPageProps) {
-  const { eventId } = params;
+  const { eventId } = use(params);
 
   const [winners, setWinners] = useState<CategoryWinner[]>([]);
   const [loading, setLoading] = useState(true);

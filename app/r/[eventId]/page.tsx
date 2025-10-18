@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,15 +9,15 @@ import { Button } from '@/components/ui/button';
 import { PhotoCapture } from '@/components/registration/PhotoCapture';
 import { LoadingState } from '@/components/LoadingState';
 import { ErrorState } from '@/components/ErrorState';
-import { getAttendeeCookieClient } from '@/lib/cookies';
+import { getAttendeeCookieClient } from '@/lib/cookies-client';
 
 interface RegistrationPageProps {
-  params: { eventId: string };
+  params: Promise<{ eventId: string }>;
 }
 
 export default function RegistrationPage({ params }: RegistrationPageProps) {
   const router = useRouter();
-  const { eventId } = params;
+  const { eventId } = use(params);
 
   // Form state
   const [displayName, setDisplayName] = useState('');
