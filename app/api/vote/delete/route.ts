@@ -9,7 +9,6 @@ const requestSchema = z.object({
   eventId: eventIdSchema,
   voterAttendeeId: z.string().uuid(),
   category: categorySchema,
-  targetRegistrationId: z.string().uuid(),
 });
 
 export async function POST(request: NextRequest) {
@@ -24,7 +23,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { eventId, voterAttendeeId, category, targetRegistrationId } = validation.data;
+    const { eventId, voterAttendeeId, category } = validation.data;
 
     // Validate cookie matches
     const cookieAttendeeId = await getAttendeeId(eventId);
@@ -54,54 +53,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate target registration exists and is approved
-    const targetRegistration = await prisma.registration.findUnique({
-      where: { id: targetRegistrationId },
-    });
-
-    if (!targetRegistration || !targetRegistration.isApproved) {
-      return NextResponse.json(
-        { success: false, error: 'INVALID_REGISTRATION' },
-        { status: 400 }
-      );
-    }
-
-    // Validate registration belongs to same event
-    if (targetRegistration.eventId !== eventId) {
-      return NextResponse.json(
-        { success: false, error: 'Cross-event voting not allowed' },
-        { status: 400 }
-      );
-    }
-
-    // Upsert vote (replaces previous vote in same category)
-    const vote = await prisma.vote.upsert({
+    // Delete the vote
+    await prisma.vote.deleteMany({
       where: {
-        votes_unique: {
-          eventId,
-          voterAttendeeId,
-          category,
-        },
-      },
-      update: {
-        targetRegistrationId,
-        updatedAt: new Date(),
-      },
-      create: {
-        id: crypto.randomUUID(),
         eventId,
         voterAttendeeId,
         category,
-        targetRegistrationId,
       },
     });
 
     return NextResponse.json({
       success: true,
-      message: 'Vote recorded',
+      message: 'Vote removed',
     });
   } catch (error) {
-    console.error('Vote error:', error);
+    console.error('Unvote error:', error);
     return NextResponse.json(
       { success: false, error: 'UNKNOWN_ERROR' },
       { status: 500 }

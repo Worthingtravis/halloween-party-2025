@@ -7,7 +7,7 @@ export async function compressImage(file: File): Promise<Blob> {
   return await imageCompression(file, {
     maxWidthOrHeight: 1080,
     useWebWorker: true,
-    quality: 0.7,
+    initialQuality: 0.7,
   });
 }
 

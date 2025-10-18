@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { isVotingOpen } from '@/lib/timezone';
+import { getAttendeeId } from '@/lib/cookies-server';
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,10 +20,23 @@ export async function GET(request: NextRequest) {
             },
           },
         },
+        registrations: {
+          select: {
+            attendeeId: true,
+          },
+        },
       },
     });
 
-    // Add voting status to each event
+    // Get attendee IDs for each event to check if user has registered
+    const attendeeChecks = await Promise.all(
+      events.map(async (event) => ({
+        eventId: event.id,
+        attendeeId: await getAttendeeId(event.id),
+      }))
+    );
+
+    // Add voting status and registration check to each event
     const eventsWithStatus = events.map((event) => {
       const votingStatus = isVotingOpen(event);
       const now = new Date();
@@ -40,6 +54,12 @@ export async function GET(request: NextRequest) {
         status = 'upcoming';
       }
 
+      // Check if user has a registration for this event
+      const attendeeCheck = attendeeChecks.find(check => check.eventId === event.id);
+      const hasOwnRegistration = attendeeCheck?.attendeeId 
+        ? event.registrations.some(reg => reg.attendeeId === attendeeCheck.attendeeId)
+        : false;
+
       return {
         id: event.id,
         name: event.name,
@@ -49,6 +69,7 @@ export async function GET(request: NextRequest) {
         registrationCount: event._count.registrations,
         status,
         votingOpen: votingStatus,
+        hasOwnRegistration,
       };
     });
 

@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Set cookie
-    setAttendeeCookie(eventId, attendee.id);
+    await setAttendeeCookie(eventId, attendee.id);
 
     return NextResponse.json({
       success: true,

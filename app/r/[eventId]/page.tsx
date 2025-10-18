@@ -89,7 +89,7 @@ export default function RegistrationPage({ params }: RegistrationPageProps) {
         <Card className="text-center">
           <CardHeader>
             <div className="mx-auto mb-4 text-6xl">🎉</div>
-            <CardTitle className="text-2xl">You're In!</CardTitle>
+            <CardTitle className="text-2xl">You&apos;re In!</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-muted-foreground">

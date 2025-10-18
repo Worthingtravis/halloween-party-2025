@@ -15,6 +15,7 @@ interface Event {
   registrationCount: number;
   status: EventStatus;
   votingOpen: boolean;
+  hasOwnRegistration: boolean;
 }
 
 interface EventCardProps {
@@ -67,6 +68,14 @@ export function EventCard({ event, className = '' }: EventCardProps) {
       };
     }
     // registration or upcoming
+    // Show different text if user already has a registration
+    if (event.hasOwnRegistration) {
+      return {
+        href: `/r/${event.id}`,
+        label: 'View My Costume',
+        variant: 'outline' as const,
+      };
+    }
     return {
       href: `/r/${event.id}`,
       label: 'Register Costume',
@@ -120,7 +129,9 @@ export function EventCard({ event, className = '' }: EventCardProps) {
           <Button asChild className="flex-1 min-h-[44px] sm:min-h-[40px]" variant={action.variant}>
             <Link href={action.href}>{action.label}</Link>
           </Button>
-          {event.status !== 'closed' && event.registrationCount > 0 && (
+          {event.status !== 'closed' && 
+           event.registrationCount > 0 && 
+           !(event.status === 'voting' && event.hasOwnRegistration) && (
             <Button
               asChild
               variant="outline"

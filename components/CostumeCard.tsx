@@ -1,5 +1,6 @@
 import React from 'react';
 import Image from 'next/image';
+import { motion, PanInfo } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
@@ -75,31 +76,59 @@ export function CostumeCard({
   }
 
   if (variant === 'swipeable') {
-    // For voting UI - larger, more prominent, optimized for mobile touch
+    // For voting UI - larger, more prominent, optimized for mobile touch with swipe gestures
+    const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+      const swipeThreshold = 50;
+      const swipeVelocityThreshold = 500;
+      
+      // Check if user swiped far enough or fast enough
+      if (Math.abs(info.offset.x) > swipeThreshold || Math.abs(info.velocity.x) > swipeVelocityThreshold) {
+        if (info.offset.x > 0) {
+          // Swiped right → go to previous
+          onSwipe?.('right');
+        } else {
+          // Swiped left → go to next
+          onSwipe?.('left');
+        }
+      }
+    };
+
     return (
-      <Card className={`overflow-hidden ${className}`}>
-        <div className="relative aspect-[3/4] w-full">
-          <Image
-            src={registration.photoFullUrl}
-            alt={registration.costumeTitle}
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 100vw, 600px"
-            priority
-            loading="eager"
-          />
-        </div>
-        <CardHeader className="p-4 sm:p-6">
-          <CardTitle className="text-xl sm:text-2xl line-clamp-2">
-            {registration.costumeTitle}
-          </CardTitle>
-          {showDisplayName && (
-            <p className="text-sm sm:text-base text-muted-foreground truncate">
-              {registration.displayName}
-            </p>
-          )}
-        </CardHeader>
-      </Card>
+      <motion.div
+        drag="x"
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={0.2}
+        onDragEnd={handleDragEnd}
+        className={className}
+        initial={{ opacity: 0, x: 0 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      >
+        <Card className="overflow-hidden touch-manipulation">
+          <div className="relative aspect-[3/4] w-full">
+            <Image
+              src={registration.photoFullUrl}
+              alt={registration.costumeTitle}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 600px"
+              priority
+              loading="eager"
+            />
+          </div>
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="text-xl sm:text-2xl line-clamp-2">
+              {registration.costumeTitle}
+            </CardTitle>
+            {showDisplayName && (
+              <p className="text-sm sm:text-base text-muted-foreground truncate">
+                {registration.displayName}
+              </p>
+            )}
+          </CardHeader>
+        </Card>
+      </motion.div>
     );
   }
 

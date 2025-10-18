@@ -6,6 +6,8 @@ import { getAttendeeId } from '@/lib/cookies-server';
  * Deterministic shuffle using seed
  */
 function seededShuffle<T>(array: T[], seed: string): T[] {
+  if (array.length <= 1) return [...array];
+  
   const arr = [...array];
   
   // Simple hash function
@@ -15,14 +17,17 @@ function seededShuffle<T>(array: T[], seed: string): T[] {
     hash = hash & hash;
   }
   
+  // Ensure hash is positive
+  hash = Math.abs(hash);
+  
   // Fisher-Yates shuffle with seeded random
-  const random = (max: number) => {
+  const random = () => {
     hash = (hash * 9301 + 49297) % 233280;
-    return (hash / 233280) * max;
+    return hash / 233280;
   };
   
   for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(random(i + 1));
+    const j = Math.floor(random() * (i + 1));
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   
@@ -33,6 +38,7 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const eventId = searchParams.get('eventId');
+    const publicAccess = searchParams.get('public') === 'true';
 
     if (!eventId) {
       return NextResponse.json(
@@ -41,9 +47,28 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get attendee ID from cookie for deterministic shuffle
-    const attendeeId = getAttendeeId(eventId);
-    if (!attendeeId) {
+    // Check event status to determine if public access is allowed
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+    });
+
+    if (!event) {
+      return NextResponse.json(
+        { success: false, error: 'Event not found' },
+        { status: 404 }
+      );
+    }
+
+    // Get attendee ID from cookie for deterministic shuffle (optional for public access)
+    const attendeeId = await getAttendeeId(eventId);
+    
+    // Allow access without attendee ID if:
+    // 1. publicAccess flag is set AND
+    // 2. Voting has closed (event ended)
+    const votingClosed = event.votingClosesAt && new Date() > event.votingClosesAt;
+    const allowPublicAccess = publicAccess && votingClosed;
+
+    if (!attendeeId && !allowPublicAccess) {
       return NextResponse.json(
         { success: false, error: 'No attendee cookie found' },
         { status: 401 }
@@ -65,8 +90,13 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Deterministic shuffle based on eventId + attendeeId
-    const seed = `${eventId}-${attendeeId}`;
+    // Check if current attendee has a registration
+    const hasOwnRegistration = attendeeId 
+      ? registrations.some(reg => reg.attendeeId === attendeeId)
+      : false;
+
+    // Deterministic shuffle based on eventId + attendeeId (or just eventId for public)
+    const seed = attendeeId ? `${eventId}-${attendeeId}` : eventId;
     const shuffled = seededShuffle(registrations, seed);
 
     // Format response
@@ -81,6 +111,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       registrations: formatted,
+      hasOwnRegistration,
     });
   } catch (error) {
     console.error('Registration list error:', error);

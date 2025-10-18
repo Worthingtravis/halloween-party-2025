@@ -40,7 +40,7 @@ export default function ResultsPage({ params }: ResultsPageProps) {
         // In a real implementation, you'd have a /api/results/[eventId] endpoint
         // For now, we'll fetch registrations and votes and calculate client-side
         
-        const registrationsRes = await fetch(`/api/registration/list?eventId=${eventId}`);
+        const registrationsRes = await fetch(`/api/registration/list?eventId=${eventId}&public=true`);
         if (!registrationsRes.ok) throw new Error('Failed to fetch registrations');
         const { registrations } = await registrationsRes.json();
 
@@ -84,16 +84,16 @@ export default function ResultsPage({ params }: ResultsPageProps) {
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8">
       <div className="mb-8 text-center">
-        <h1 className="text-4xl font-bold">🏆 Contest Winners 🏆</h1>
-        <p className="mt-2 text-muted-foreground">
+        <h1 className="text-4xl font-bold tracking-tight">Contest Winners</h1>
+        <p className="mt-2 text-lg text-muted-foreground">
           Congratulations to all our amazing contestants!
         </p>
       </div>
 
-      <div className="space-y-8">
+      <div className="space-y-6">
         {winners.map((categoryWinner) => (
-          <Card key={categoryWinner.category} className="overflow-hidden">
-            <CardHeader className="bg-secondary">
+          <Card key={categoryWinner.category} className="overflow-hidden border-2">
+            <CardHeader className="bg-muted/50">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-xl">
                   <CategoryBadge
@@ -104,25 +104,26 @@ export default function ResultsPage({ params }: ResultsPageProps) {
                 </CardTitle>
                 {categoryWinner.isTie && (
                   <span className="rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-white">
-                    Tie!
+                    Tie
                   </span>
                 )}
               </div>
             </CardHeader>
             <CardContent className="pt-6">
               {categoryWinner.winner ? (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   <CostumeCard registration={categoryWinner.winner} variant="static" />
                   <div className="flex flex-col justify-center space-y-4">
-                    <div>
-                      <h3 className="text-2xl font-bold">{categoryWinner.winner.costumeTitle}</h3>
+                    <div className="space-y-2">
+                      <h3 className="text-2xl font-bold tracking-tight">{categoryWinner.winner.costumeTitle}</h3>
                       <p className="text-lg text-muted-foreground">
                         by {categoryWinner.winner.displayName}
                       </p>
                     </div>
-                    <div>
-                      <p className="text-3xl font-bold text-primary">
-                        {categoryWinner.voteCount} votes
+                    <div className="rounded-lg border bg-muted/50 p-4">
+                      <p className="text-sm font-medium text-muted-foreground">Total Votes</p>
+                      <p className="text-3xl font-bold tracking-tight">
+                        {categoryWinner.voteCount}
                       </p>
                     </div>
                   </div>
@@ -135,11 +136,11 @@ export default function ResultsPage({ params }: ResultsPageProps) {
         ))}
       </div>
 
-      <div className="mt-12 text-center">
-        <Card>
-          <CardContent className="py-6">
-            <p className="text-sm text-muted-foreground">
-              Thanks for participating! 🎉
+      <div className="mt-12">
+        <Card className="border-2">
+          <CardContent className="py-8 text-center">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Thanks for participating!
               <br />
               Winners determined by popular vote.
               <br />

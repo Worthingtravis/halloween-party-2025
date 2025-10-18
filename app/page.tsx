@@ -15,6 +15,7 @@ interface Event {
   registrationCount: number;
   status: EventStatus;
   votingOpen: boolean;
+  hasOwnRegistration: boolean;
 }
 
 export default function Home() {
@@ -31,7 +32,6 @@ export default function Home() {
         const data = await res.json();
         setEvents(data.events);
       } catch (err) {
-        console.error(err);
         setError('Failed to load events');
       } finally {
         setLoading(false);
@@ -101,44 +101,6 @@ export default function Home() {
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-6 sm:py-8">
-        {/* Filters */}
-        <div className="mb-6 sm:mb-8">
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant={filter === 'all' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilter('all')}
-              className="min-h-[44px] sm:min-h-[36px] text-xs sm:text-sm"
-            >
-              All Events ({events.length})
-            </Button>
-            <Button
-              variant={filter === 'voting' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilter('voting')}
-              className="min-h-[44px] sm:min-h-[36px] text-xs sm:text-sm"
-            >
-              🗳️ Voting ({events.filter((e) => e.status === 'voting').length})
-            </Button>
-            <Button
-              variant={filter === 'registration' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilter('registration')}
-              className="min-h-[44px] sm:min-h-[36px] text-xs sm:text-sm"
-            >
-              📝 Registration ({events.filter((e) => e.status === 'registration').length})
-            </Button>
-            <Button
-              variant={filter === 'closed' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilter('closed')}
-              className="min-h-[44px] sm:min-h-[36px] text-xs sm:text-sm"
-            >
-              ✓ Past Events ({events.filter((e) => e.status === 'closed').length})
-            </Button>
-          </div>
-        </div>
-
         {/* Events Grid */}
         {filteredEvents.length === 0 ? (
           <div className="text-center py-12 sm:py-16">

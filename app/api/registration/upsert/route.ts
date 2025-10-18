@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate cookie matches
-    const cookieAttendeeId = getAttendeeId(eventId);
+    const cookieAttendeeId = await getAttendeeId(eventId);
     if (cookieAttendeeId !== attendeeId) {
       return NextResponse.json(
         { success: false, error: 'INVALID_ATTENDEE' },

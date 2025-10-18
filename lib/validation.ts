@@ -28,7 +28,7 @@ export const CATEGORY_CONFIG = {
   funniest: { label: 'Funniest', icon: '😂', color: '#FCD34D' },
   scariest: { label: 'Scariest', icon: '👻', color: '#A78BFA' },
   cutest: { label: 'Cutest', icon: '🥰', color: '#F9A8D4' },
-  personalFavorite: { label: 'Personal Favorite', icon: '⭐', color: '#FB923C' },
+  personalFavorite: { label: 'Favorite', icon: '⭐', color: '#FB923C' },
 } as const;
 
 /**
@@ -55,7 +55,7 @@ export function validateDisplayName(name: string): { valid: boolean; error?: str
   const result = displayNameSchema.safeParse(name);
   return result.success
     ? { valid: true }
-    : { valid: false, error: result.error.errors[0].message };
+    : { valid: false, error: result.error.issues[0]?.message };
 }
 
 /**
@@ -65,6 +65,6 @@ export function validateCostumeTitle(title: string): { valid: boolean; error?: s
   const result = costumeTitleSchema.safeParse(title);
   return result.success
     ? { valid: true }
-    : { valid: false, error: result.error.errors[0].message };
+    : { valid: false, error: result.error.issues[0]?.message };
 }
 
