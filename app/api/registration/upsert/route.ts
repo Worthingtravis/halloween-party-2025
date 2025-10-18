@@ -4,6 +4,7 @@ import { getAttendeeId } from '@/lib/cookies-server';
 import { generateThumbnail } from '@/lib/image-server';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
+import { put } from '@vercel/blob';
 
 export async function POST(request: NextRequest) {
   try {
@@ -54,22 +55,48 @@ export async function POST(request: NextRequest) {
     const selfieThumbnail = await generateThumbnail(selfieBuffer);
     const fullThumbnail = await generateThumbnail(fullBuffer);
 
-    // Save files
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', eventId);
-    await mkdir(uploadDir, { recursive: true });
-
     const registrationId = crypto.randomUUID();
     const selfieFilename = `${registrationId}_selfie.jpg`;
     const selfieThumbFilename = `${registrationId}_selfie_thumb.jpg`;
     const fullFilename = `${registrationId}_full.jpg`;
     const fullThumbFilename = `${registrationId}_full_thumb.jpg`;
 
-    await Promise.all([
-      writeFile(path.join(uploadDir, selfieFilename), selfieBuffer),
-      writeFile(path.join(uploadDir, selfieThumbFilename), selfieThumbnail),
-      writeFile(path.join(uploadDir, fullFilename), fullBuffer),
-      writeFile(path.join(uploadDir, fullThumbFilename), fullThumbnail),
-    ]);
+    let photoSelfieUrl: string;
+    let photoFullUrl: string;
+
+    // Detect if we're in a serverless environment (Vercel)
+    const isServerless = process.env.VERCEL || process.env.BLOB_READ_WRITE_TOKEN;
+
+    if (isServerless) {
+      // Use Vercel Blob Storage for serverless environments
+      if (!process.env.BLOB_READ_WRITE_TOKEN) {
+        throw new Error('BLOB_READ_WRITE_TOKEN environment variable is required for file uploads in production');
+      }
+
+      const [selfieBlob, selfieThumbBlob, fullBlob, fullThumbBlob] = await Promise.all([
+        put(`${eventId}/${selfieFilename}`, selfieBuffer, { access: 'public' }),
+        put(`${eventId}/${selfieThumbFilename}`, selfieThumbnail, { access: 'public' }),
+        put(`${eventId}/${fullFilename}`, fullBuffer, { access: 'public' }),
+        put(`${eventId}/${fullThumbFilename}`, fullThumbnail, { access: 'public' }),
+      ]);
+
+      photoSelfieUrl = selfieBlob.url;
+      photoFullUrl = fullBlob.url;
+    } else {
+      // Use local filesystem for development
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads', eventId);
+      await mkdir(uploadDir, { recursive: true });
+
+      await Promise.all([
+        writeFile(path.join(uploadDir, selfieFilename), selfieBuffer),
+        writeFile(path.join(uploadDir, selfieThumbFilename), selfieThumbnail),
+        writeFile(path.join(uploadDir, fullFilename), fullBuffer),
+        writeFile(path.join(uploadDir, fullThumbFilename), fullThumbnail),
+      ]);
+
+      photoSelfieUrl = `/uploads/${eventId}/${selfieFilename}`;
+      photoFullUrl = `/uploads/${eventId}/${fullFilename}`;
+    }
 
     // Save to database
     const registration = await prisma.registration.create({
@@ -78,8 +105,8 @@ export async function POST(request: NextRequest) {
         eventId,
         attendeeId,
         costumeTitle,
-        photoSelfieUrl: `/uploads/${eventId}/${selfieFilename}`,
-        photoFullUrl: `/uploads/${eventId}/${fullFilename}`,
+        photoSelfieUrl,
+        photoFullUrl,
         isApproved: true,
       },
     });
