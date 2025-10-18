@@ -225,20 +225,7 @@ export default function VotingPage({ params }: VotingPageProps) {
     }
 
     try {
-      // If there was a vote in another category for this costume, remove it
-      if (currentVoteCategory && currentVoteCategory !== newCategory) {
-        await fetch('/api/vote/delete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            eventId,
-            voterAttendeeId: attendeeId,
-            category: currentVoteCategory,
-          }),
-        });
-      }
-
-      // Set the new vote (upsert will replace any existing vote in this category)
+      // Set the new vote (backend handles moving votes between categories automatically)
       const res = await fetch('/api/vote/set', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -252,13 +239,13 @@ export default function VotingPage({ params }: VotingPageProps) {
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'Failed to vote');
+        throw new Error(data.message || data.error || 'Failed to vote');
       }
     } catch (err) {
       // Rollback on error - restore both votes and selected category
       setMyVotes(previousVotes);
       setSelectedCategory(previousCategory);
-      setVotingError(err instanceof Error ? err.message : 'Failed to vote');
+      setVotingError(err instanceof Error ? err.message : 'Failed to vote. Please try again.');
     } finally {
       // Allow new requests after a short delay
       setTimeout(() => {
@@ -446,13 +433,6 @@ export default function VotingPage({ params }: VotingPageProps) {
         </p>
       </div>
 
-      {/* Voting Error */}
-      {votingError && (
-        <div className="mb-4">
-          <ErrorState error={{ message: votingError }} variant="inline" />
-        </div>
-      )}
-
       {/* Costume Card */}
       {currentRegistration && (
         <div className="space-y-2">
@@ -503,6 +483,16 @@ export default function VotingPage({ params }: VotingPageProps) {
                   );
                 })}
               </ButtonGroup>
+              
+              {/* Voting Error - Inline with category buttons */}
+              {votingError && (
+                <div className="px-4 py-3 rounded-lg bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800">
+                  <p className="text-sm text-red-800 dark:text-red-200 text-center">
+                    ⚠️ {votingError}
+                  </p>
+                </div>
+              )}
+              
               {/* Show info about current votes */}
               <div className="flex flex-wrap gap-2 justify-center mt-3">
                 {CATEGORIES.map((cat) => {
@@ -527,15 +517,18 @@ export default function VotingPage({ params }: VotingPageProps) {
                       key={cat}
                       onClick={handleBadgeClick}
                       className={cn(
-                        "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer",
+                        "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer",
                         isCurrentCostume 
                           ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 ring-2 ring-green-500"
                           : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
                       )}
                     >
-                      <span>{config.icon}</span>
-                      <span className="hidden sm:inline">{config.label}:</span>
-                      <span className="font-semibold truncate max-w-[120px]">{costume?.costumeTitle}</span>
+                      <img 
+                        src={costume?.photoSelfieUrl} 
+                        alt={costume?.costumeTitle}
+                        className="w-6 h-6 rounded-full object-cover"
+                      />
+                      <span className="font-semibold">{config.label}</span>
                       {isCurrentCostume && <Check className="w-3 h-3" />}
                     </div>
                   );

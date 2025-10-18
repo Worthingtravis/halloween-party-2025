@@ -89,8 +89,16 @@ export async function POST(request: NextRequest) {
       });
 
       if (existingVoteForSameCostume) {
-        // Throw an error that will be caught and handled
-        throw new Error(`DUPLICATE_COSTUME_VOTE:${existingVoteForSameCostume.category}`);
+        // Automatically delete the old vote to allow moving to new category
+        await tx.vote.delete({
+          where: {
+            votes_unique: {
+              eventId,
+              voterAttendeeId,
+              category: existingVoteForSameCostume.category,
+            },
+          },
+        });
       }
 
       // Check if vote already exists for this attendee in this category
@@ -145,20 +153,6 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Vote error:', error);
     
-    // Handle custom duplicate costume vote error
-    if (error instanceof Error && error.message.startsWith('DUPLICATE_COSTUME_VOTE:')) {
-      const existingCategory = error.message.split(':')[1];
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: 'DUPLICATE_COSTUME_VOTE', 
-          message: `You have already voted for this costume in the "${existingCategory}" category. Please remove that vote first.`,
-          existingCategory,
-        },
-        { status: 409 }
-      );
-    }
-    
     // Handle specific Prisma errors
     if (error && typeof error === 'object' && 'code' in error) {
       // P2002: Unique constraint violation
@@ -171,14 +165,14 @@ export async function POST(request: NextRequest) {
       // P2034: Transaction conflict (serialization failure)
       if (error.code === 'P2034') {
         return NextResponse.json(
-          { success: false, error: 'CONCURRENT_REQUEST', message: 'Please try again' },
+          { success: false, error: 'CONCURRENT_REQUEST', message: 'Please try again in a moment' },
           { status: 409 }
         );
       }
     }
     
     return NextResponse.json(
-      { success: false, error: 'UNKNOWN_ERROR', message: 'Failed to record vote' },
+      { success: false, error: 'UNKNOWN_ERROR', message: 'Failed to record vote. Please try again.' },
       { status: 500 }
     );
   }
