@@ -40,6 +40,14 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    console.log('[Registration Upsert]', {
+      attendeeId,
+      existingRegistrationId: existingRegistration?.id,
+      isUpdate: !!existingRegistration,
+      hasPhotoSelfie: !!photoSelfie,
+      hasPhotoFull: !!photoFull,
+    });
+
     // For new registrations, both photos are required
     if (!existingRegistration && (!photoSelfie || !photoFull)) {
       return NextResponse.json(
@@ -121,16 +129,33 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Prepare update data - only include fields that have values
+    const updateData: any = {
+      costumeTitle,
+    };
+    
+    // Only update photo URLs if they have actual values (not empty strings)
+    if (photoSelfieUrl && photoSelfieUrl !== '') {
+      updateData.photoSelfieUrl = photoSelfieUrl;
+    }
+    if (photoFullUrl && photoFullUrl !== '') {
+      updateData.photoFullUrl = photoFullUrl;
+    }
+
+    // For new registrations, ensure we have photo URLs
+    if (!existingRegistration && (!photoSelfieUrl || !photoFullUrl)) {
+      return NextResponse.json(
+        { success: false, error: 'Photo URLs are required for new registrations' },
+        { status: 400 }
+      );
+    }
+
     // Save to database (upsert)
     const registration = await prisma.registration.upsert({
       where: {
         id: registrationId,
       },
-      update: {
-        costumeTitle,
-        photoSelfieUrl,
-        photoFullUrl,
-      },
+      update: updateData,
       create: {
         id: registrationId,
         eventId,

@@ -97,11 +97,18 @@ export default function RegistrationPage({ params }: RegistrationPageProps) {
     setError(null);
 
     try {
+      // Get existing attendee ID if available
+      const existingAttendeeId = getAttendeeCookieClient(eventId);
+
       // Step 1: Create/update attendee
       const attendeeResponse = await fetch('/api/attendee/upsert', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventId, displayName }),
+        body: JSON.stringify({ 
+          eventId, 
+          displayName,
+          ...(existingAttendeeId && { attendeeId: existingAttendeeId })
+        }),
       });
 
       if (!attendeeResponse.ok) {
@@ -163,7 +170,7 @@ export default function RegistrationPage({ params }: RegistrationPageProps) {
         <Card>
           <CardHeader>
             <div className="mx-auto mb-4 text-6xl">✅</div>
-            <CardTitle className="text-2xl text-center">You&apos;re Already Registered!</CardTitle>
+            <CardTitle className="text-2xl text-center">You're Already Registered!</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-3 text-center">
@@ -208,7 +215,7 @@ export default function RegistrationPage({ params }: RegistrationPageProps) {
         <Card className="text-center">
           <CardHeader>
             <div className="mx-auto mb-4 text-6xl">🎉</div>
-            <CardTitle className="text-2xl">{isEditing ? 'Updated!' : 'You&apos;re In!'}</CardTitle>
+            <CardTitle className="text-2xl">{isEditing ? 'Updated!' : "You're In!"}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-muted-foreground">

@@ -36,20 +36,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Upsert attendee
-    const attendee = await prisma.attendee.upsert({
-      where: {
-        id: attendeeId || crypto.randomUUID(),
-      },
-      update: {
-        displayName,
-      },
-      create: {
-        id: crypto.randomUUID(),
-        eventId,
-        displayName,
-      },
-    });
+    let attendee;
+
+    if (attendeeId) {
+      // Update existing attendee
+      attendee = await prisma.attendee.upsert({
+        where: {
+          id: attendeeId,
+        },
+        update: {
+          displayName,
+        },
+        create: {
+          id: attendeeId,
+          eventId,
+          displayName,
+        },
+      });
+    } else {
+      // Create new attendee
+      attendee = await prisma.attendee.create({
+        data: {
+          id: crypto.randomUUID(),
+          eventId,
+          displayName,
+        },
+      });
+    }
 
     // Set cookie
     await setAttendeeCookie(eventId, attendee.id);

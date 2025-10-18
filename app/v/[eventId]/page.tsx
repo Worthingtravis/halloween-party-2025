@@ -313,11 +313,25 @@ export default function VotingPage({ params }: VotingPageProps) {
   if (eventStatus && !eventStatus.votingOpen && !hasOwnRegistration) {
     return (
       <div className="container mx-auto flex min-h-screen items-center justify-center px-4">
-        <CountdownTimer
-          targetDate={eventStatus.opensAtUTC}
-          variant="overlay"
-          onComplete={() => window.location.reload()}
-        />
+        <div className="flex flex-col items-center gap-6">
+          <CountdownTimer
+            targetDate={eventStatus.opensAtUTC}
+            variant="overlay"
+            onComplete={() => window.location.reload()}
+          />
+          <div className="text-center space-y-4 max-w-md">
+            <p className="text-muted-foreground">
+              Want to join the contest?
+            </p>
+            <Button 
+              onClick={() => router.push(`/r/${eventId}`)}
+              size="lg"
+              className="min-h-[48px]"
+            >
+              Register Your Costume 🎃
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
