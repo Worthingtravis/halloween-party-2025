@@ -62,17 +62,19 @@ export function CountdownTimer({
 
   if (variant === 'overlay') {
     return (
-      <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm ${className}`}>
-        <Card className="mx-4 max-w-md p-8 text-center">
-          <h2 className="mb-2 text-2xl font-bold">Voting Opens In</h2>
-          <p className="mb-6 text-sm text-muted-foreground">
+      <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 ${className}`}>
+        <Card className="w-full max-w-md p-4 sm:p-8 text-center">
+          <h2 className="mb-2 text-xl sm:text-2xl font-bold">Voting Opens In</h2>
+          <p className="mb-4 sm:mb-6 text-xs sm:text-sm text-muted-foreground">
             {formatEventTime(targetDate)}
           </p>
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-4 gap-2 sm:gap-4">
             {timeUnits.map((unit) => (
               <div key={unit.label} className="flex flex-col">
-                <span className="text-3xl font-bold">{unit.value}</span>
-                <span className="text-xs text-muted-foreground">{unit.label}</span>
+                <span className="text-2xl sm:text-3xl font-bold">{unit.value}</span>
+                <span className="text-[10px] sm:text-xs text-muted-foreground">
+                  {unit.label}
+                </span>
               </div>
             ))}
           </div>
@@ -83,15 +85,15 @@ export function CountdownTimer({
 
   if (variant === 'compact') {
     return (
-      <div className={`inline-flex items-center gap-1 text-sm ${className}`}>
+      <div className={`inline-flex items-center gap-1 text-xs sm:text-sm flex-wrap ${className}`}>
         <span className="text-muted-foreground">Opens in:</span>
         {timeUnits
           .filter((unit) => unit.value > 0)
           .slice(0, 2)
           .map((unit, idx) => (
             <React.Fragment key={unit.label}>
-              {idx > 0 && <span>,</span>}
-              <span className="font-semibold">
+              {idx > 0 && <span className="hidden sm:inline">,</span>}
+              <span className="font-semibold whitespace-nowrap">
                 {unit.value}
                 {unit.short}
               </span>
@@ -103,17 +105,21 @@ export function CountdownTimer({
 
   // Inline variant
   return (
-    <Card className={`p-4 ${className}`}>
-      <h3 className="mb-2 text-center font-semibold">Voting Opens In</h3>
-      <div className="grid grid-cols-4 gap-2 text-center">
+    <Card className={`p-3 sm:p-4 ${className}`}>
+      <h3 className="mb-2 text-center text-sm sm:text-base font-semibold">
+        Voting Opens In
+      </h3>
+      <div className="grid grid-cols-4 gap-2 sm:gap-3 text-center">
         {timeUnits.map((unit) => (
           <div key={unit.label}>
-            <div className="text-2xl font-bold">{unit.value}</div>
-            <div className="text-xs text-muted-foreground">{unit.label}</div>
+            <div className="text-xl sm:text-2xl font-bold">{unit.value}</div>
+            <div className="text-[10px] sm:text-xs text-muted-foreground">
+              {unit.label}
+            </div>
           </div>
         ))}
       </div>
-      <p className="mt-4 text-center text-xs text-muted-foreground">
+      <p className="mt-3 sm:mt-4 text-center text-[10px] sm:text-xs text-muted-foreground">
         {formatEventTime(targetDate)}
       </p>
     </Card>
