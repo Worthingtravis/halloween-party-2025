@@ -12,7 +12,12 @@
     "typecheck": "tsc --noEmit",
     "seed:events": "tsx scripts/seed-events.ts",
     "seed": "tsx scripts/seed-complete.ts",
-    "seed:three": "tsx scripts/seed-three-contests.ts"
+    "seed:three": "tsx scripts/seed-three-contests.ts",
+    "script": "tsx",
+    "clear-registrations": "tsx scripts/clear-event-registrations.ts",
+    "toggle-voting": "tsx scripts/toggle-voting.ts",
+    "delete-other-events": "tsx scripts/delete-other-events.ts",
+    "set-voting-time": "tsx scripts/set-voting-time.ts"
   },
   "keywords": [],
   "author": "",

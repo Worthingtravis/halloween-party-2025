@@ -37,23 +37,11 @@ export default function ResultsPage({ params }: ResultsPageProps) {
   useEffect(() => {
     const fetchResults = async () => {
       try {
-        // In a real implementation, you'd have a /api/results/[eventId] endpoint
-        // For now, we'll fetch registrations and votes and calculate client-side
-        
-        const registrationsRes = await fetch(`/api/registration/list?eventId=${eventId}&public=true`);
-        if (!registrationsRes.ok) throw new Error('Failed to fetch registrations');
-        const { registrations } = await registrationsRes.json();
+        const resultsRes = await fetch(`/api/results/${eventId}`);
+        if (!resultsRes.ok) throw new Error('Failed to fetch results');
+        const { results } = await resultsRes.json();
 
-        // TODO: Implement actual vote counting from /api/results/[eventId]
-        // For now, mock winners
-        const mockWinners: CategoryWinner[] = CATEGORIES.map((cat, idx) => ({
-          category: cat,
-          winner: registrations[idx] || null,
-          voteCount: Math.floor(Math.random() * 20) + 5,
-          isTie: false,
-        }));
-
-        setWinners(mockWinners);
+        setWinners(results);
       } catch (err) {
         console.error(err);
         setError('Failed to load results');
