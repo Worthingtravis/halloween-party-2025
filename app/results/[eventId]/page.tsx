@@ -6,6 +6,8 @@ import { CategoryBadge } from '@/components/CategoryBadge';
 import { LoadingState } from '@/components/LoadingState';
 import { ErrorState } from '@/components/ErrorState';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Download } from 'lucide-react';
 import { Category, CATEGORIES } from '@/lib/validation';
 
 interface Registration {
@@ -35,6 +37,82 @@ export default function ResultsPage({ params }: ResultsPageProps) {
   const [results, setResults] = useState<CategoryResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
+
+  const downloadImage = async (url: string, filename: string) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error('Failed to download image:', error);
+    }
+  };
+
+  const downloadAllPhotos = async () => {
+    if (downloading) return;
+    
+    setDownloading(true);
+    try {
+      const allEntries = results.flatMap(r => r.entries);
+      
+      for (let i = 0; i < allEntries.length; i++) {
+        const entry = allEntries[i];
+        const sanitizedTitle = entry.costumeTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        const sanitizedName = entry.displayName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        
+        // Download selfie
+        await downloadImage(
+          entry.photoSelfieUrl,
+          `${i + 1}_${sanitizedName}_${sanitizedTitle}_selfie.jpg`
+        );
+        
+        // Small delay to avoid overwhelming the browser
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Download full photo
+        await downloadImage(
+          entry.photoFullUrl,
+          `${i + 1}_${sanitizedName}_${sanitizedTitle}_full.jpg`
+        );
+        
+        // Small delay between entries
+        if (i < allEntries.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to download all photos:', error);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const downloadEntryPhotos = async (entry: Registration) => {
+    const sanitizedTitle = entry.costumeTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const sanitizedName = entry.displayName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    
+    await downloadImage(
+      entry.photoSelfieUrl,
+      `${sanitizedName}_${sanitizedTitle}_selfie.jpg`
+    );
+    
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    await downloadImage(
+      entry.photoFullUrl,
+      `${sanitizedName}_${sanitizedTitle}_full.jpg`
+    );
+  };
 
   useEffect(() => {
     const fetchResults = async () => {
@@ -78,6 +156,17 @@ export default function ResultsPage({ params }: ResultsPageProps) {
         <p className="mt-2 text-lg text-muted-foreground">
           All entries ranked by votes in each category
         </p>
+        <div className="mt-4 flex justify-center">
+          <Button
+            onClick={downloadAllPhotos}
+            disabled={downloading || results.length === 0}
+            size="lg"
+            className="gap-2"
+          >
+            <Download className="h-5 w-5" />
+            {downloading ? 'Downloading...' : 'Download All Photos'}
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-8">
@@ -113,12 +202,21 @@ export default function ResultsPage({ params }: ResultsPageProps) {
                     {categoryResult.entries.map((entry) => (
                       <div 
                         key={entry.id} 
-                        className={`flex flex-col space-y-3 rounded-lg border p-4 ${
+                        className={`relative flex flex-col space-y-3 rounded-lg border p-4 ${
                           entry.isWinner 
                             ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/20' 
                             : 'border-border bg-card'
                         }`}
                       >
+                        <Button
+                          onClick={() => downloadEntryPhotos(entry)}
+                          size="icon"
+                          variant="outline"
+                          className="absolute top-2 right-2 z-10 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
+                          title="Download photos"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
                         {entry.isWinner && (
                           <div className="flex justify-center">
                             <span className="inline-flex items-center rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-white">
