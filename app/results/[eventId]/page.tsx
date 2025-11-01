@@ -14,12 +14,14 @@ interface Registration {
   displayName: string;
   photoSelfieUrl: string;
   photoFullUrl: string;
+  voteCount?: number;
+  isWinner?: boolean;
 }
 
-interface CategoryWinner {
+interface CategoryResult {
   category: Category;
-  winner: Registration | null;
-  voteCount: number;
+  entries: Registration[];
+  maxVotes: number;
   isTie: boolean;
 }
 
@@ -30,7 +32,7 @@ interface ResultsPageProps {
 export default function ResultsPage({ params }: ResultsPageProps) {
   const { eventId } = use(params);
 
-  const [winners, setWinners] = useState<CategoryWinner[]>([]);
+  const [results, setResults] = useState<CategoryResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,7 +43,7 @@ export default function ResultsPage({ params }: ResultsPageProps) {
         if (!resultsRes.ok) throw new Error('Failed to fetch results');
         const { results } = await resultsRes.json();
 
-        setWinners(results);
+        setResults(results);
       } catch (err) {
         console.error(err);
         setError('Failed to load results');
@@ -70,27 +72,27 @@ export default function ResultsPage({ params }: ResultsPageProps) {
   }
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-8">
+    <div className="container mx-auto max-w-6xl px-4 py-8">
       <div className="mb-8 text-center">
-        <h1 className="text-4xl font-bold tracking-tight">Contest Winners</h1>
+        <h1 className="text-4xl font-bold tracking-tight">Contest Results</h1>
         <p className="mt-2 text-lg text-muted-foreground">
-          Congratulations to all our amazing contestants!
+          All entries ranked by votes in each category
         </p>
       </div>
 
-      <div className="space-y-6">
-        {winners.map((categoryWinner) => (
-          <Card key={categoryWinner.category} className="overflow-hidden border-2">
+      <div className="space-y-8">
+        {results.map((categoryResult) => (
+          <Card key={categoryResult.category} className="overflow-hidden border-2">
             <CardHeader className="bg-muted/50">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-xl">
                   <CategoryBadge
-                    category={categoryWinner.category}
+                    category={categoryResult.category}
                     variant="result"
-                    count={categoryWinner.voteCount}
+                    count={categoryResult.maxVotes}
                   />
                 </CardTitle>
-                {categoryWinner.isTie && (
+                {categoryResult.isTie && (
                   <span className="rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-white">
                     Tie
                   </span>
@@ -98,26 +100,57 @@ export default function ResultsPage({ params }: ResultsPageProps) {
               </div>
             </CardHeader>
             <CardContent className="pt-6">
-              {categoryWinner.winner ? (
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  <CostumeCard registration={categoryWinner.winner} variant="static" />
-                  <div className="flex flex-col justify-center space-y-4">
-                    <div className="space-y-2">
-                      <h3 className="text-2xl font-bold tracking-tight">{categoryWinner.winner.costumeTitle}</h3>
-                      <p className="text-lg text-muted-foreground">
-                        by {categoryWinner.winner.displayName}
+              {categoryResult.entries.length > 0 ? (
+                <div className="space-y-6">
+                  {categoryResult.isTie && (
+                    <div className="text-center">
+                      <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                        🏆 {categoryResult.entries.filter((e) => e.isWinner).length}-way tie for first place with {categoryResult.maxVotes} votes!
                       </p>
                     </div>
-                    <div className="rounded-lg border bg-muted/50 p-4">
-                      <p className="text-sm font-medium text-muted-foreground">Total Votes</p>
-                      <p className="text-3xl font-bold tracking-tight">
-                        {categoryWinner.voteCount}
-                      </p>
-                    </div>
+                  )}
+                  <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                    {categoryResult.entries.map((entry) => (
+                      <div 
+                        key={entry.id} 
+                        className={`flex flex-col space-y-3 rounded-lg border p-4 ${
+                          entry.isWinner 
+                            ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/20' 
+                            : 'border-border bg-card'
+                        }`}
+                      >
+                        {entry.isWinner && (
+                          <div className="flex justify-center">
+                            <span className="inline-flex items-center rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-white">
+                              🏆 Winner
+                            </span>
+                          </div>
+                        )}
+                        <CostumeCard registration={entry} variant="static" />
+                        <div className="space-y-2 text-center">
+                          <h3 className="text-lg font-bold tracking-tight">{entry.costumeTitle}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            by {entry.displayName}
+                          </p>
+                          <div className={`rounded-lg border p-3 ${
+                            entry.isWinner 
+                              ? 'border-amber-500 bg-amber-100 dark:bg-amber-950/40' 
+                              : 'bg-muted/50'
+                          }`}>
+                            <p className="text-xs font-medium text-muted-foreground">Votes</p>
+                            <p className={`text-2xl font-bold tracking-tight ${
+                              entry.isWinner ? 'text-amber-600 dark:text-amber-400' : ''
+                            }`}>
+                              {entry.voteCount}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ) : (
-                <p className="py-8 text-center text-muted-foreground">No winner for this category</p>
+                <p className="py-8 text-center text-muted-foreground">No entries for this category</p>
               )}
             </CardContent>
           </Card>
@@ -132,7 +165,7 @@ export default function ResultsPage({ params }: ResultsPageProps) {
               <br />
               Winners determined by popular vote.
               <br />
-              Ties broken by earliest registration time.
+              All entries ranked by vote count within each category.
             </p>
           </CardContent>
         </Card>

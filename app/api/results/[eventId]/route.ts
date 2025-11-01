@@ -53,56 +53,48 @@ export async function GET(
       // Get all votes for this category
       const categoryVotes = voteCounts.filter((v) => v.category === category);
 
-      if (categoryVotes.length === 0) {
+      // Create a map of registration ID to vote count
+      const voteMap = new Map<string, number>();
+      categoryVotes.forEach((vote) => {
+        voteMap.set(vote.targetRegistrationId, vote._count._all);
+      });
+
+      // Build entries for all registrations, including those with 0 votes
+      const allEntries = registrations.map((reg) => {
+        const votes = voteMap.get(reg.id) || 0;
         return {
-          category,
-          winner: null,
-          voteCount: 0,
-          isTie: false,
+          registration: reg,
+          votes,
         };
-      }
+      });
+
+      // Sort by votes (descending), then by earliest registration time
+      allEntries.sort((a, b) => {
+        if (b.votes !== a.votes) {
+          return b.votes - a.votes;
+        }
+        return a.registration.createdAt.getTime() - b.registration.createdAt.getTime();
+      });
 
       // Find the maximum vote count
-      const maxVotes = Math.max(...categoryVotes.map((v) => v._count._all));
+      const maxVotes = allEntries.length > 0 ? allEntries[0].votes : 0;
 
-      // Find all registrations with the max vote count (for tie detection)
-      const topVotes = categoryVotes.filter((v) => v._count._all === maxVotes);
-
-      // Get the winner(s) with registration details
-      const winnerCandidates = topVotes
-        .map((vote) => {
-          const reg = registrations.find((r) => r.id === vote.targetRegistrationId);
-          return reg ? { registration: reg, votes: vote._count._all } : null;
-        })
-        .filter((c) => c !== null);
-
-      if (winnerCandidates.length === 0) {
-        return {
-          category,
-          winner: null,
-          voteCount: 0,
-          isTie: false,
-        };
-      }
-
-      // If there's a tie, use earliest registration time as tiebreaker
-      const winner = winnerCandidates.sort((a, b) => {
-        return a!.registration.createdAt.getTime() - b!.registration.createdAt.getTime();
-      })[0]!;
-
-      const isTie = winnerCandidates.length > 1;
+      // Find all entries with max votes (winners)
+      const winners = allEntries.filter((entry) => entry.votes === maxVotes && entry.votes > 0);
 
       return {
         category,
-        winner: {
-          id: winner.registration.id,
-          costumeTitle: winner.registration.costumeTitle,
-          displayName: winner.registration.attendee.displayName,
-          photoSelfieUrl: winner.registration.photoSelfieUrl,
-          photoFullUrl: winner.registration.photoFullUrl,
-        },
-        voteCount: winner.votes,
-        isTie,
+        entries: allEntries.map((entry) => ({
+          id: entry.registration.id,
+          costumeTitle: entry.registration.costumeTitle,
+          displayName: entry.registration.attendee.displayName,
+          photoSelfieUrl: entry.registration.photoSelfieUrl,
+          photoFullUrl: entry.registration.photoFullUrl,
+          voteCount: entry.votes,
+          isWinner: entry.votes === maxVotes && entry.votes > 0,
+        })),
+        maxVotes,
+        isTie: winners.length > 1,
       };
     });
 
