@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Download, Image as ImageIcon, CheckSquare, Square } from 'lucide-react';
+import { Download, Image as ImageIcon, CheckSquare, Square, Share2 } from 'lucide-react';
 import { Category, CATEGORIES } from '@/lib/validation';
 import JSZip from 'jszip';
 
@@ -159,6 +159,60 @@ export default function ResultsPage({ params }: ResultsPageProps) {
       entry.photoFullUrl,
       `${sanitizedName}_${sanitizedTitle}_full.jpg`
     );
+  };
+
+  const shareEntry = async (entry: Registration | OverallTopEntry) => {
+    const shareText = `Check out ${entry.displayName}'s costume: "${entry.costumeTitle}" from our Halloween Contest! 🎃`;
+    const shareUrl = window.location.href;
+
+    // Try Web Share API first (works great on mobile)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${entry.costumeTitle} - Halloween Contest`,
+          text: shareText,
+          url: shareUrl,
+        });
+      } catch (error) {
+        // User cancelled or error occurred
+        console.log('Share cancelled or failed:', error);
+      }
+    } else {
+      // Fallback: Copy link to clipboard and show options
+      const encodedText = encodeURIComponent(shareText);
+      const encodedUrl = encodeURIComponent(shareUrl);
+      
+      // Create a simple modal with share options
+      const shareLinks = [
+        {
+          name: 'Twitter',
+          url: `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`,
+        },
+        {
+          name: 'Facebook',
+          url: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encodedText}`,
+        },
+        {
+          name: 'WhatsApp',
+          url: `https://wa.me/?text=${encodedText}%20${encodedUrl}`,
+        },
+        {
+          name: 'Copy Link',
+          action: async () => {
+            try {
+              await navigator.clipboard.writeText(shareUrl);
+              alert('Link copied to clipboard!');
+            } catch (err) {
+              console.error('Failed to copy:', err);
+            }
+          },
+        },
+      ];
+
+      // Open first available share option (Twitter)
+      const selectedLink = shareLinks[0];
+      window.open(selectedLink.url, '_blank', 'width=600,height=400');
+    }
   };
 
   const openPhotoSelector = () => {
@@ -472,13 +526,13 @@ export default function ResultsPage({ params }: ResultsPageProps) {
                   className="relative flex flex-col space-y-3 rounded-lg border-2 border-amber-500 bg-white dark:bg-gray-950 p-4 shadow-lg"
                 >
                   <Button
-                    onClick={() => downloadEntryPhotos(entry)}
+                    onClick={() => shareEntry(entry)}
                     size="icon"
                     variant="outline"
                     className="absolute top-2 right-2 z-10 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
-                    title="Download photos"
+                    title="Share this costume"
                   >
-                    <Download className="h-4 w-4" />
+                    <Share2 className="h-4 w-4" />
                   </Button>
                   <div className="flex justify-center">
                     <div className={`inline-flex items-center rounded-full px-4 py-2 text-lg font-bold text-white ${
@@ -549,13 +603,13 @@ export default function ResultsPage({ params }: ResultsPageProps) {
                         }`}
                       >
                         <Button
-                          onClick={() => downloadEntryPhotos(entry)}
+                          onClick={() => shareEntry(entry)}
                           size="icon"
                           variant="outline"
                           className="absolute top-2 right-2 z-10 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
-                          title="Download photos"
+                          title="Share this costume"
                         >
-                          <Download className="h-4 w-4" />
+                          <Share2 className="h-4 w-4" />
                         </Button>
                         {entry.isWinner && (
                           <div className="flex justify-center">
