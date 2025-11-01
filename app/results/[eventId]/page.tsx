@@ -336,7 +336,7 @@ export default function ResultsPage({ params }: ResultsPageProps) {
 
       {/* Photo Selection Dialog */}
       <Dialog open={showPhotoSelector} onOpenChange={setShowPhotoSelector}>
-        <DialogContent className="max-w-4xl w-[95vw] sm:w-full h-[90vh] sm:h-auto sm:max-h-[85vh] flex flex-col p-0">
+        <DialogContent className="max-w-4xl w-[95vw] sm:w-full h-[90vh] max-h-[90vh] flex flex-col p-0">
           <DialogHeader className="flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-4 border-b">
             <DialogTitle className="text-xl sm:text-2xl">Select Photos to Download</DialogTitle>
             <div className="flex items-center justify-between pt-2">
@@ -377,65 +377,67 @@ export default function ResultsPage({ params }: ResultsPageProps) {
             </div>
           </div>
 
-          <ScrollArea className="flex-1 px-4 sm:px-6">
-            <div className="space-y-3 py-4">
-              {getFilteredEntries().length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>No costumes found matching "{searchQuery}"</p>
-                </div>
-              ) : (
-                getFilteredEntries().map(({ entry, selection }) => (
-                  <Card key={entry.id} className="p-3 sm:p-4 hover:bg-muted/50 transition-colors">
-                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                      <div className="flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 mx-auto sm:mx-0 relative overflow-hidden rounded-lg border-2">
-                        <img
-                          src={entry.photoSelfieUrl}
-                          alt={entry.costumeTitle}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="flex-1 text-center sm:text-left min-w-0">
-                        <h3 className="font-semibold text-sm sm:text-base line-clamp-1">{entry.costumeTitle}</h3>
-                        <p className="text-xs sm:text-sm text-muted-foreground mb-3 line-clamp-1">by {entry.displayName}</p>
-                        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
-                          <label 
-                            className="flex items-center justify-center sm:justify-start space-x-2 p-2 rounded-lg bg-muted/50 hover:bg-muted cursor-pointer transition-colors"
-                            htmlFor={`${entry.id}-selfie`}
-                          >
-                            <Checkbox
-                              id={`${entry.id}-selfie`}
-                              checked={selection.selfie}
-                              onCheckedChange={() => togglePhotoSelection(entry.id, 'selfie')}
-                              className="h-4 w-4"
-                            />
-                            <span className="text-xs sm:text-sm font-medium flex items-center gap-1.5">
-                              <ImageIcon className="h-3.5 w-3.5" />
-                              Selfie
-                            </span>
-                          </label>
-                          <label 
-                            className="flex items-center justify-center sm:justify-start space-x-2 p-2 rounded-lg bg-muted/50 hover:bg-muted cursor-pointer transition-colors"
-                            htmlFor={`${entry.id}-full`}
-                          >
-                            <Checkbox
-                              id={`${entry.id}-full`}
-                              checked={selection.full}
-                              onCheckedChange={() => togglePhotoSelection(entry.id, 'full')}
-                              className="h-4 w-4"
-                            />
-                            <span className="text-xs sm:text-sm font-medium flex items-center gap-1.5">
-                              <ImageIcon className="h-3.5 w-3.5" />
-                              Costume
-                            </span>
-                          </label>
+          <div className="flex-1 overflow-hidden px-4 sm:px-6">
+            <ScrollArea className="h-full">
+              <div className="space-y-3 py-4">
+                {getFilteredEntries().length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>No costumes found matching "{searchQuery}"</p>
+                  </div>
+                ) : (
+                  getFilteredEntries().map(({ entry, selection }) => (
+                    <Card key={entry.id} className="p-3 sm:p-4 hover:bg-muted/50 transition-colors">
+                      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                        <div className="flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 mx-auto sm:mx-0 relative overflow-hidden rounded-lg border-2">
+                          <img
+                            src={entry.photoSelfieUrl}
+                            alt={entry.costumeTitle}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="flex-1 text-center sm:text-left min-w-0">
+                          <h3 className="font-semibold text-sm sm:text-base line-clamp-1">{entry.costumeTitle}</h3>
+                          <p className="text-xs sm:text-sm text-muted-foreground mb-3 line-clamp-1">by {entry.displayName}</p>
+                          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+                            <label 
+                              className="flex items-center justify-center sm:justify-start space-x-2 p-2 rounded-lg bg-muted/50 hover:bg-muted cursor-pointer transition-colors"
+                              htmlFor={`${entry.id}-selfie`}
+                            >
+                              <Checkbox
+                                id={`${entry.id}-selfie`}
+                                checked={selection.selfie}
+                                onCheckedChange={() => togglePhotoSelection(entry.id, 'selfie')}
+                                className="h-4 w-4"
+                              />
+                              <span className="text-xs sm:text-sm font-medium flex items-center gap-1.5">
+                                <ImageIcon className="h-3.5 w-3.5" />
+                                Selfie
+                              </span>
+                            </label>
+                            <label 
+                              className="flex items-center justify-center sm:justify-start space-x-2 p-2 rounded-lg bg-muted/50 hover:bg-muted cursor-pointer transition-colors"
+                              htmlFor={`${entry.id}-full`}
+                            >
+                              <Checkbox
+                                id={`${entry.id}-full`}
+                                checked={selection.full}
+                                onCheckedChange={() => togglePhotoSelection(entry.id, 'full')}
+                                className="h-4 w-4"
+                              />
+                              <span className="text-xs sm:text-sm font-medium flex items-center gap-1.5">
+                                <ImageIcon className="h-3.5 w-3.5" />
+                                Costume
+                              </span>
+                            </label>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </Card>
-                ))
-              )}
-            </div>
-          </ScrollArea>
+                    </Card>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+          </div>
 
           <DialogFooter className="flex-shrink-0 flex-col sm:flex-row gap-2 px-4 sm:px-6 py-4 border-t bg-muted/30">
             <Button 
