@@ -10,8 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Download, Image as ImageIcon, CheckSquare, Square, Share2, Twitter, Facebook, MessageCircle, Link2 } from 'lucide-react';
+import { Download, Image as ImageIcon, CheckSquare, Square } from 'lucide-react';
 import { Category, CATEGORIES } from '@/lib/validation';
 import JSZip from 'jszip';
 
@@ -64,25 +63,6 @@ export default function ResultsPage({ params }: ResultsPageProps) {
   const [downloadProgress, setDownloadProgress] = useState('');
   const [showPhotoSelector, setShowPhotoSelector] = useState(false);
   const [photoSelections, setPhotoSelections] = useState<Map<string, PhotoSelection>>(new Map());
-
-  const downloadImage = async (url: string, filename: string) => {
-    try {
-      const response = await fetch(url);
-      const blob = await response.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
-      
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      window.URL.revokeObjectURL(blobUrl);
-    } catch (error) {
-      console.error('Failed to download image:', error);
-    }
-  };
 
   const fetchImageAsBlob = async (url: string): Promise<Blob> => {
     const response = await fetch(url);
@@ -142,64 +122,6 @@ export default function ResultsPage({ params }: ResultsPageProps) {
       setDownloadProgress('');
     } finally {
       setDownloading(false);
-    }
-  };
-
-  const downloadEntryPhotos = async (entry: Registration | OverallTopEntry) => {
-    const sanitizedTitle = entry.costumeTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    const sanitizedName = entry.displayName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    
-    await downloadImage(
-      entry.photoSelfieUrl,
-      `${sanitizedName}_${sanitizedTitle}_selfie.jpg`
-    );
-    
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    await downloadImage(
-      entry.photoFullUrl,
-      `${sanitizedName}_${sanitizedTitle}_full.jpg`
-    );
-  };
-
-  const shareEntry = async (entry: Registration | OverallTopEntry) => {
-    const shareUrl = window.location.href;
-
-    // Try Web Share API first (works great on mobile)
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          url: shareUrl,
-        });
-      } catch (error) {
-        // User cancelled or error occurred
-        console.log('Share cancelled or failed:', error);
-      }
-    }
-  };
-
-  const shareToTwitter = (entry: Registration | OverallTopEntry) => {
-    const url = encodeURIComponent(window.location.href);
-    window.open(`https://twitter.com/intent/tweet?url=${url}`, '_blank', 'width=600,height=400');
-  };
-
-  const shareToFacebook = (entry: Registration | OverallTopEntry) => {
-    const url = encodeURIComponent(window.location.href);
-    window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank', 'width=600,height=400');
-  };
-
-  const shareToWhatsApp = (entry: Registration | OverallTopEntry) => {
-    const url = encodeURIComponent(window.location.href);
-    window.open(`https://wa.me/?text=${url}`, '_blank');
-  };
-
-  const copyLink = async (entry: Registration | OverallTopEntry) => {
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-      // You could add a toast notification here
-      alert('Link copied to clipboard!');
-    } catch (err) {
-      console.error('Failed to copy:', err);
     }
   };
 
@@ -513,40 +435,6 @@ export default function ResultsPage({ params }: ResultsPageProps) {
                   key={entry.id}
                   className="relative flex flex-col space-y-3 rounded-lg border-2 border-amber-500 bg-white dark:bg-gray-950 p-4 shadow-lg"
                 >
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        className="absolute top-2 right-2 z-10 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
-                        title="Share this costume"
-                      >
-                        <Share2 className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
-                      <DropdownMenuItem onClick={() => shareEntry(entry)} className="cursor-pointer">
-                        <Share2 className="mr-2 h-4 w-4" />
-                        Share...
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => shareToTwitter(entry)} className="cursor-pointer">
-                        <Twitter className="mr-2 h-4 w-4" />
-                        Twitter
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => shareToFacebook(entry)} className="cursor-pointer">
-                        <Facebook className="mr-2 h-4 w-4" />
-                        Facebook
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => shareToWhatsApp(entry)} className="cursor-pointer">
-                        <MessageCircle className="mr-2 h-4 w-4" />
-                        WhatsApp
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => copyLink(entry)} className="cursor-pointer">
-                        <Link2 className="mr-2 h-4 w-4" />
-                        Copy Link
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
                   <div className="flex justify-center">
                     <div className={`inline-flex items-center rounded-full px-4 py-2 text-lg font-bold text-white ${
                       entry.rank === 1 ? 'bg-gradient-to-r from-yellow-400 to-yellow-600' :
@@ -615,40 +503,6 @@ export default function ResultsPage({ params }: ResultsPageProps) {
                             : 'border-border bg-card'
                         }`}
                       >
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              size="icon"
-                              variant="outline"
-                              className="absolute top-2 right-2 z-10 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
-                              title="Share this costume"
-                            >
-                              <Share2 className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuItem onClick={() => shareEntry(entry)} className="cursor-pointer">
-                              <Share2 className="mr-2 h-4 w-4" />
-                              Share...
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => shareToTwitter(entry)} className="cursor-pointer">
-                              <Twitter className="mr-2 h-4 w-4" />
-                              Twitter
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => shareToFacebook(entry)} className="cursor-pointer">
-                              <Facebook className="mr-2 h-4 w-4" />
-                              Facebook
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => shareToWhatsApp(entry)} className="cursor-pointer">
-                              <MessageCircle className="mr-2 h-4 w-4" />
-                              WhatsApp
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => copyLink(entry)} className="cursor-pointer">
-                              <Link2 className="mr-2 h-4 w-4" />
-                              Copy Link
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
                         {entry.isWinner && (
                           <div className="flex justify-center">
                             <span className="inline-flex items-center rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-white">
