@@ -240,10 +240,13 @@ export default function ResultsPage({ params }: ResultsPageProps) {
         setResults(results);
         setTop3Overall(top3Overall || []);
 
-        // Initialize photo selections
+        // Initialize photo selections - deduplicate by entry ID
         const allEntries = results.flatMap((r: CategoryResult) => r.entries);
+        const uniqueEntries = Array.from(
+          new Map(allEntries.map((entry: Registration) => [entry.id, entry])).values()
+        ) as Registration[];
         const selections = new Map<string, PhotoSelection>();
-        allEntries.forEach((entry: Registration) => {
+        uniqueEntries.forEach((entry: Registration) => {
           selections.set(entry.id, {
             entryId: entry.id,
             entryName: `${entry.displayName} - ${entry.costumeTitle}`,
@@ -334,9 +337,11 @@ export default function ResultsPage({ params }: ResultsPageProps) {
 
           <ScrollArea className="flex-1 -mx-4 sm:mx-0 px-4 sm:pr-4">
             <div className="space-y-3 sm:space-y-4">
-              {results.flatMap(r => r.entries).map((entry) => {
-                const selection = photoSelections.get(entry.id);
-                if (!selection) return null;
+              {Array.from(photoSelections.values()).map((selection) => {
+                const entry = results
+                  .flatMap(r => r.entries)
+                  .find(e => e.id === selection.entryId);
+                if (!entry) return null;
 
                 return (
                   <Card key={entry.id} className="p-3 sm:p-4">
