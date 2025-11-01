@@ -12,6 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Download, Image as ImageIcon, CheckSquare, Square } from 'lucide-react';
 import { Category, CATEGORIES } from '@/lib/validation';
+import JSZip from 'jszip';
 
 interface Registration {
   id: string;
@@ -59,6 +60,7 @@ export default function ResultsPage({ params }: ResultsPageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState('');
   const [showPhotoSelector, setShowPhotoSelector] = useState(false);
   const [photoSelections, setPhotoSelections] = useState<Map<string, PhotoSelection>>(new Map());
 
@@ -81,12 +83,23 @@ export default function ResultsPage({ params }: ResultsPageProps) {
     }
   };
 
+  const fetchImageAsBlob = async (url: string): Promise<Blob> => {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Failed to fetch image: ${url}`);
+    return await response.blob();
+  };
+
   const downloadAllPhotos = async () => {
     if (downloading) return;
     
     setDownloading(true);
+    setDownloadProgress('Preparing download...');
+    
     try {
+      const zip = new JSZip();
       const allEntries = results.flatMap(r => r.entries);
+      const totalPhotos = allEntries.length * 2; // selfie + full
+      let downloaded = 0;
       
       for (let i = 0; i < allEntries.length; i++) {
         const entry = allEntries[i];
@@ -94,27 +107,38 @@ export default function ResultsPage({ params }: ResultsPageProps) {
         const sanitizedName = entry.displayName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
         
         // Download selfie
-        await downloadImage(
-          entry.photoSelfieUrl,
-          `${i + 1}_${sanitizedName}_${sanitizedTitle}_selfie.jpg`
-        );
-        
-        // Small delay to avoid overwhelming the browser
-        await new Promise(resolve => setTimeout(resolve, 500));
+        setDownloadProgress(`Downloading ${downloaded + 1}/${totalPhotos} photos...`);
+        const selfieBlob = await fetchImageAsBlob(entry.photoSelfieUrl);
+        zip.file(`${i + 1}_${sanitizedName}_${sanitizedTitle}_selfie.jpg`, selfieBlob);
+        downloaded++;
         
         // Download full photo
-        await downloadImage(
-          entry.photoFullUrl,
-          `${i + 1}_${sanitizedName}_${sanitizedTitle}_full.jpg`
-        );
-        
-        // Small delay between entries
-        if (i < allEntries.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
+        setDownloadProgress(`Downloading ${downloaded + 1}/${totalPhotos} photos...`);
+        const fullBlob = await fetchImageAsBlob(entry.photoFullUrl);
+        zip.file(`${i + 1}_${sanitizedName}_${sanitizedTitle}_full.jpg`, fullBlob);
+        downloaded++;
       }
+      
+      // Generate zip file
+      setDownloadProgress('Creating zip file...');
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      
+      // Download zip
+      const now = new Date();
+      const timestamp = now.toISOString().split('T')[0];
+      const blobUrl = window.URL.createObjectURL(zipBlob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `halloween-contest-photos-${timestamp}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+      
+      setDownloadProgress('');
     } catch (error) {
       console.error('Failed to download all photos:', error);
+      setDownloadProgress('');
     } finally {
       setDownloading(false);
     }
@@ -178,40 +202,56 @@ export default function ResultsPage({ params }: ResultsPageProps) {
   const downloadSelectedPhotos = async () => {
     setDownloading(true);
     setShowPhotoSelector(false);
+    setDownloadProgress('Preparing download...');
 
     try {
+      const zip = new JSZip();
       const allEntries = results.flatMap(r => r.entries);
-      let downloadCount = 0;
+      const selectedCount = getSelectedCount();
+      let downloaded = 0;
 
       for (const entry of allEntries) {
         const selection = photoSelections.get(entry.id);
-        if (!selection) continue;
+        if (!selection || (!selection.selfie && !selection.full)) continue;
 
         const sanitizedTitle = entry.costumeTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
         const sanitizedName = entry.displayName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
 
         if (selection.selfie) {
-          await downloadImage(
-            entry.photoSelfieUrl,
-            `${sanitizedName}_${sanitizedTitle}_selfie.jpg`
-          );
-          downloadCount++;
-          await new Promise(resolve => setTimeout(resolve, 500));
+          setDownloadProgress(`Downloading ${downloaded + 1}/${selectedCount} photos...`);
+          const selfieBlob = await fetchImageAsBlob(entry.photoSelfieUrl);
+          zip.file(`${sanitizedName}_${sanitizedTitle}_selfie.jpg`, selfieBlob);
+          downloaded++;
         }
 
         if (selection.full) {
-          await downloadImage(
-            entry.photoFullUrl,
-            `${sanitizedName}_${sanitizedTitle}_full.jpg`
-          );
-          downloadCount++;
-          await new Promise(resolve => setTimeout(resolve, 500));
+          setDownloadProgress(`Downloading ${downloaded + 1}/${selectedCount} photos...`);
+          const fullBlob = await fetchImageAsBlob(entry.photoFullUrl);
+          zip.file(`${sanitizedName}_${sanitizedTitle}_full.jpg`, fullBlob);
+          downloaded++;
         }
       }
 
-      console.log(`Downloaded ${downloadCount} photos`);
+      // Generate zip file
+      setDownloadProgress('Creating zip file...');
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      
+      // Download zip
+      const now = new Date();
+      const timestamp = now.toISOString().split('T')[0];
+      const blobUrl = window.URL.createObjectURL(zipBlob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `halloween-contest-selected-${timestamp}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+
+      setDownloadProgress('');
     } catch (error) {
       console.error('Failed to download selected photos:', error);
+      setDownloadProgress('');
     } finally {
       setDownloading(false);
     }
@@ -291,7 +331,7 @@ export default function ResultsPage({ params }: ResultsPageProps) {
             variant="outline"
           >
             <Download className="h-5 w-5" />
-            {downloading ? 'Downloading...' : 'Download All'}
+            {downloading ? downloadProgress || 'Downloading...' : 'Download All as ZIP'}
           </Button>
           <Button
             onClick={openPhotoSelector}
@@ -403,11 +443,11 @@ export default function ResultsPage({ params }: ResultsPageProps) {
             </Button>
             <Button 
               onClick={downloadSelectedPhotos} 
-              disabled={getSelectedCount() === 0}
+              disabled={getSelectedCount() === 0 || downloading}
               className="gap-2 w-full sm:w-auto order-1 sm:order-2"
             >
               <Download className="h-4 w-4" />
-              Download {getSelectedCount()} Photo{getSelectedCount() !== 1 ? 's' : ''}
+              {downloading ? downloadProgress : `Download as ZIP (${getSelectedCount()} photo${getSelectedCount() !== 1 ? 's' : ''})`}
             </Button>
           </DialogFooter>
         </DialogContent>
