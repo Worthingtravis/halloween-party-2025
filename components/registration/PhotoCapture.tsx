@@ -85,7 +85,7 @@ export function PhotoCapture({ type, onCapture, value }: PhotoCaptureProps) {
   };
 
   const cameraType = type === 'selfie' ? 'user' : 'environment';
-  const label = type === 'selfie' ? 'Selfie (Front Camera)' : 'Full Body Photo (Back Camera)';
+  const label = type === 'selfie' ? 'Selfie (Front Camera)' : 'Costume Photo (Back Camera)';
 
   return (
     <div className="space-y-4">

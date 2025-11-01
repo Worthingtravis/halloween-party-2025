@@ -293,9 +293,9 @@ export default function RegistrationPage({ params }: RegistrationPageProps) {
               <PhotoCapture type="selfie" onCapture={setSelfie} value={selfie} />
             </div>
 
-            {/* Full Body Photo */}
+            {/* Costume Photo */}
             <div className="space-y-2">
-              <Label>Full Body Photo {isEditing && '(optional)'}</Label>
+              <Label>Costume Photo {isEditing && '(optional)'}</Label>
               {isEditing && existingRegistration && !fullPhoto && (
                 <div className="mb-2 p-2 border rounded-lg bg-muted/50">
                   <p className="text-xs text-muted-foreground mb-2">Current photo:</p>

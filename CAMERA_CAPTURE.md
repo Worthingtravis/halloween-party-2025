@@ -13,7 +13,7 @@ When users tap the photo capture buttons:
    - Uses the **front-facing camera** (selfie mode)
    - Takes photo and returns to the app
 
-2. **"Take Full Body Photo (Back Camera)"**
+2. **"Take Costume Photo (Back Camera)"**
    - Opens the device's camera app automatically
    - Uses the **rear-facing camera**
    - Takes photo and returns to the app
@@ -38,7 +38,7 @@ When users tap the photo capture buttons:
 
 **Key Attributes:**
 - `capture="user"` → Front camera (for selfies)
-- `capture="environment"` → Rear camera (for full body shots)
+- `capture="environment"` → Rear camera (for Costume shots)
 - `accept="image/*"` → Accepts all image formats
 
 ### Features
@@ -75,7 +75,7 @@ When users tap the photo capture buttons:
 4. **Expected**: Camera app opens with front camera
 5. Take photo
 6. **Expected**: Returns to app with photo preview
-7. Tap "📸 Take Full Body Photo (Back Camera)"
+7. Tap "📸 Take Costume Photo (Back Camera)"
 8. **Expected**: Camera app opens with rear camera
 
 ### Desktop Testing
@@ -90,7 +90,7 @@ When users tap the photo capture buttons:
 
 ### Button Text
 - "📸 Take Selfie (Front Camera)"
-- "📸 Take Full Body Photo (Back Camera)"
+- "📸 Take Costume Photo (Back Camera)"
 
 ### Help Text
 - "Camera will open automatically • Or choose from gallery"

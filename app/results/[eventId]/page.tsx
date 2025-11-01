@@ -425,7 +425,7 @@ export default function ResultsPage({ params }: ResultsPageProps) {
                             />
                             <span className="text-xs sm:text-sm font-medium flex items-center gap-1.5">
                               <ImageIcon className="h-3.5 w-3.5" />
-                              Full Body
+                              Costume
                             </span>
                           </label>
                         </div>

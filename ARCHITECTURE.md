@@ -1054,7 +1054,7 @@ export function PhotoCapture({ type, onCapture }: PhotoCaptureProps) {
           {loading ? (
             <LoadingState variant="spinner" size="sm" />
           ) : (
-            `Capture ${type === 'selfie' ? 'Selfie' : 'Full Body Photo'}`
+            `Capture ${type === 'selfie' ? 'Selfie' : 'Costume Photo'}`
           )}
         </Button>
       )}
@@ -1198,7 +1198,7 @@ export default function RegistrationPage({ params }: { params: { eventId: string
       </div>
 
       <div>
-        <label className="block mb-2">Full Body Photo (Back Camera)</label>
+        <label className="block mb-2">Costume Photo (Back Camera)</label>
         <PhotoCapture type="full" onCapture={setFullPhoto} />
       </div>
 
