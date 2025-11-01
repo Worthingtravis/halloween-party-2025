@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Download, Image as ImageIcon, CheckSquare, Square } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Download, Image as ImageIcon, CheckSquare, Square, Search, X } from 'lucide-react';
 import { Category, CATEGORIES } from '@/lib/validation';
 import JSZip from 'jszip';
 
@@ -63,6 +64,7 @@ export default function ResultsPage({ params }: ResultsPageProps) {
   const [downloadProgress, setDownloadProgress] = useState('');
   const [showPhotoSelector, setShowPhotoSelector] = useState(false);
   const [photoSelections, setPhotoSelections] = useState<Map<string, PhotoSelection>>(new Map());
+  const [searchQuery, setSearchQuery] = useState('');
 
   const fetchImageAsBlob = async (url: string): Promise<Blob> => {
     const response = await fetch(url);
@@ -127,6 +129,7 @@ export default function ResultsPage({ params }: ResultsPageProps) {
 
   const openPhotoSelector = () => {
     setShowPhotoSelector(true);
+    setSearchQuery('');
   };
 
   const togglePhotoSelection = (entryId: string, photoType: 'selfie' | 'full') => {
@@ -230,6 +233,25 @@ export default function ResultsPage({ params }: ResultsPageProps) {
     return count;
   };
 
+  const getFilteredEntries = () => {
+    const entries = Array.from(photoSelections.values()).map((selection) => {
+      const entry = results
+        .flatMap(r => r.entries)
+        .find(e => e.id === selection.entryId);
+      return entry ? { entry, selection } : null;
+    }).filter(item => item !== null);
+
+    if (!searchQuery.trim()) {
+      return entries;
+    }
+
+    const query = searchQuery.toLowerCase();
+    return entries.filter(item => 
+      item!.entry.costumeTitle.toLowerCase().includes(query) ||
+      item!.entry.displayName.toLowerCase().includes(query)
+    );
+  };
+
   useEffect(() => {
     const fetchResults = async () => {
       try {
@@ -314,95 +336,108 @@ export default function ResultsPage({ params }: ResultsPageProps) {
 
       {/* Photo Selection Dialog */}
       <Dialog open={showPhotoSelector} onOpenChange={setShowPhotoSelector}>
-        <DialogContent className="max-w-4xl w-[95vw] sm:w-full h-[90vh] sm:h-auto sm:max-h-[80vh] flex flex-col p-4 sm:p-6">
-          <DialogHeader className="flex-shrink-0">
+        <DialogContent className="max-w-4xl w-[95vw] sm:w-full h-[90vh] sm:h-auto sm:max-h-[85vh] flex flex-col p-0">
+          <DialogHeader className="flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-4 border-b">
             <DialogTitle className="text-xl sm:text-2xl">Select Photos to Download</DialogTitle>
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              Choose which photos you want to download. Selected: <span className="font-semibold">{getSelectedCount()} photo{getSelectedCount() !== 1 ? 's' : ''}</span>
-            </p>
+            <div className="flex items-center justify-between pt-2">
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                <span className="font-semibold text-foreground">{getSelectedCount()}</span> photo{getSelectedCount() !== 1 ? 's' : ''} selected · <span className="font-semibold text-foreground">{photoSelections.size}</span> costume{photoSelections.size !== 1 ? 's' : ''} total
+              </p>
+            </div>
           </DialogHeader>
           
-          <div className="flex gap-2 mb-3 sm:mb-4 flex-shrink-0">
-            <Button onClick={selectAllPhotos} variant="outline" size="sm" className="gap-2 flex-1 sm:flex-initial">
-              <CheckSquare className="h-4 w-4" />
-              <span className="hidden xs:inline">Select All</span>
-              <span className="xs:hidden">All</span>
-            </Button>
-            <Button onClick={deselectAllPhotos} variant="outline" size="sm" className="gap-2 flex-1 sm:flex-initial">
-              <Square className="h-4 w-4" />
-              <span className="hidden xs:inline">Deselect All</span>
-              <span className="xs:hidden">None</span>
-            </Button>
+          <div className="flex-shrink-0 px-4 sm:px-6 py-3 space-y-3 border-b bg-muted/30">
+            <div className="flex gap-2">
+              <Button onClick={selectAllPhotos} variant="outline" size="sm" className="gap-2 flex-1 sm:flex-initial">
+                <CheckSquare className="h-4 w-4" />
+                Select All
+              </Button>
+              <Button onClick={deselectAllPhotos} variant="outline" size="sm" className="gap-2 flex-1 sm:flex-initial">
+                <Square className="h-4 w-4" />
+                Deselect All
+              </Button>
+            </div>
+            
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by costume or name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 pr-9"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
           </div>
 
-          <ScrollArea className="flex-1 -mx-4 sm:mx-0 px-4 sm:pr-4">
-            <div className="space-y-3 sm:space-y-4">
-              {Array.from(photoSelections.values()).map((selection) => {
-                const entry = results
-                  .flatMap(r => r.entries)
-                  .find(e => e.id === selection.entryId);
-                if (!entry) return null;
-
-                return (
-                  <Card key={entry.id} className="p-3 sm:p-4">
+          <ScrollArea className="flex-1 px-4 sm:px-6">
+            <div className="space-y-3 py-4">
+              {getFilteredEntries().length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No costumes found matching "{searchQuery}"</p>
+                </div>
+              ) : (
+                getFilteredEntries().map(({ entry, selection }) => (
+                  <Card key={entry.id} className="p-3 sm:p-4 hover:bg-muted/50 transition-colors">
                     <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                      <div className="flex-shrink-0 w-20 h-20 sm:w-24 sm:h-24 mx-auto sm:mx-0 relative overflow-hidden rounded-lg border-2">
+                      <div className="flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 mx-auto sm:mx-0 relative overflow-hidden rounded-lg border-2">
                         <img
                           src={entry.photoSelfieUrl}
                           alt={entry.costumeTitle}
                           className="w-full h-full object-cover"
                         />
                       </div>
-                      <div className="flex-1 text-center sm:text-left">
-                        <h3 className="font-semibold text-base sm:text-lg line-clamp-1">{entry.costumeTitle}</h3>
-                        <p className="text-xs sm:text-sm text-muted-foreground mb-3">by {entry.displayName}</p>
-                        <div className="flex flex-col sm:flex-row gap-3 sm:gap-6">
-                          <div 
-                            className="flex items-center justify-center sm:justify-start space-x-2 p-2 sm:p-0 rounded-lg sm:rounded-none bg-muted/50 sm:bg-transparent cursor-pointer"
-                            onClick={() => togglePhotoSelection(entry.id, 'selfie')}
+                      <div className="flex-1 text-center sm:text-left min-w-0">
+                        <h3 className="font-semibold text-sm sm:text-base line-clamp-1">{entry.costumeTitle}</h3>
+                        <p className="text-xs sm:text-sm text-muted-foreground mb-3 line-clamp-1">by {entry.displayName}</p>
+                        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+                          <label 
+                            className="flex items-center justify-center sm:justify-start space-x-2 p-2 rounded-lg bg-muted/50 hover:bg-muted cursor-pointer transition-colors"
+                            htmlFor={`${entry.id}-selfie`}
                           >
                             <Checkbox
                               id={`${entry.id}-selfie`}
                               checked={selection.selfie}
                               onCheckedChange={() => togglePhotoSelection(entry.id, 'selfie')}
-                              className="h-5 w-5 sm:h-4 sm:w-4"
+                              className="h-4 w-4"
                             />
-                            <label
-                              htmlFor={`${entry.id}-selfie`}
-                              className="text-sm sm:text-sm font-medium leading-none cursor-pointer flex items-center gap-2"
-                            >
-                              <ImageIcon className="h-4 w-4" />
-                              Selfie Photo
-                            </label>
-                          </div>
-                          <div 
-                            className="flex items-center justify-center sm:justify-start space-x-2 p-2 sm:p-0 rounded-lg sm:rounded-none bg-muted/50 sm:bg-transparent cursor-pointer"
-                            onClick={() => togglePhotoSelection(entry.id, 'full')}
+                            <span className="text-xs sm:text-sm font-medium flex items-center gap-1.5">
+                              <ImageIcon className="h-3.5 w-3.5" />
+                              Selfie
+                            </span>
+                          </label>
+                          <label 
+                            className="flex items-center justify-center sm:justify-start space-x-2 p-2 rounded-lg bg-muted/50 hover:bg-muted cursor-pointer transition-colors"
+                            htmlFor={`${entry.id}-full`}
                           >
                             <Checkbox
                               id={`${entry.id}-full`}
                               checked={selection.full}
                               onCheckedChange={() => togglePhotoSelection(entry.id, 'full')}
-                              className="h-5 w-5 sm:h-4 sm:w-4"
+                              className="h-4 w-4"
                             />
-                            <label
-                              htmlFor={`${entry.id}-full`}
-                              className="text-sm sm:text-sm font-medium leading-none cursor-pointer flex items-center gap-2"
-                            >
-                              <ImageIcon className="h-4 w-4" />
-                              Full Photo
-                            </label>
-                          </div>
+                            <span className="text-xs sm:text-sm font-medium flex items-center gap-1.5">
+                              <ImageIcon className="h-3.5 w-3.5" />
+                              Full Body
+                            </span>
+                          </label>
                         </div>
                       </div>
                     </div>
                   </Card>
-                );
-              })}
+                ))
+              )}
             </div>
           </ScrollArea>
 
-          <DialogFooter className="flex-shrink-0 flex-col sm:flex-row gap-2 mt-4">
+          <DialogFooter className="flex-shrink-0 flex-col sm:flex-row gap-2 px-4 sm:px-6 py-4 border-t bg-muted/30">
             <Button 
               variant="outline" 
               onClick={() => setShowPhotoSelector(false)}
@@ -416,7 +451,7 @@ export default function ResultsPage({ params }: ResultsPageProps) {
               className="gap-2 w-full sm:w-auto order-1 sm:order-2"
             >
               <Download className="h-4 w-4" />
-              {downloading ? downloadProgress : `Download as ZIP (${getSelectedCount()} photo${getSelectedCount() !== 1 ? 's' : ''})`}
+              {downloading ? downloadProgress : `Download ZIP (${getSelectedCount()} photo${getSelectedCount() !== 1 ? 's' : ''})`}
             </Button>
           </DialogFooter>
         </DialogContent>
