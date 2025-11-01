@@ -7,7 +7,10 @@ import { LoadingState } from '@/components/LoadingState';
 import { ErrorState } from '@/components/ErrorState';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Download, Image as ImageIcon, CheckSquare, Square } from 'lucide-react';
 import { Category, CATEGORIES } from '@/lib/validation';
 
 interface Registration {
@@ -41,6 +44,13 @@ interface ResultsPageProps {
   params: Promise<{ eventId: string }>;
 }
 
+interface PhotoSelection {
+  entryId: string;
+  entryName: string;
+  selfie: boolean;
+  full: boolean;
+}
+
 export default function ResultsPage({ params }: ResultsPageProps) {
   const { eventId } = use(params);
 
@@ -49,6 +59,8 @@ export default function ResultsPage({ params }: ResultsPageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [showPhotoSelector, setShowPhotoSelector] = useState(false);
+  const [photoSelections, setPhotoSelections] = useState<Map<string, PhotoSelection>>(new Map());
 
   const downloadImage = async (url: string, filename: string) => {
     try {
@@ -125,6 +137,95 @@ export default function ResultsPage({ params }: ResultsPageProps) {
     );
   };
 
+  const openPhotoSelector = () => {
+    setShowPhotoSelector(true);
+  };
+
+  const togglePhotoSelection = (entryId: string, photoType: 'selfie' | 'full') => {
+    setPhotoSelections(prev => {
+      const newSelections = new Map(prev);
+      const selection = newSelections.get(entryId);
+      if (selection) {
+        selection[photoType] = !selection[photoType];
+        newSelections.set(entryId, selection);
+      }
+      return newSelections;
+    });
+  };
+
+  const selectAllPhotos = () => {
+    setPhotoSelections(prev => {
+      const newSelections = new Map(prev);
+      newSelections.forEach(selection => {
+        selection.selfie = true;
+        selection.full = true;
+      });
+      return newSelections;
+    });
+  };
+
+  const deselectAllPhotos = () => {
+    setPhotoSelections(prev => {
+      const newSelections = new Map(prev);
+      newSelections.forEach(selection => {
+        selection.selfie = false;
+        selection.full = false;
+      });
+      return newSelections;
+    });
+  };
+
+  const downloadSelectedPhotos = async () => {
+    setDownloading(true);
+    setShowPhotoSelector(false);
+
+    try {
+      const allEntries = results.flatMap(r => r.entries);
+      let downloadCount = 0;
+
+      for (const entry of allEntries) {
+        const selection = photoSelections.get(entry.id);
+        if (!selection) continue;
+
+        const sanitizedTitle = entry.costumeTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        const sanitizedName = entry.displayName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+
+        if (selection.selfie) {
+          await downloadImage(
+            entry.photoSelfieUrl,
+            `${sanitizedName}_${sanitizedTitle}_selfie.jpg`
+          );
+          downloadCount++;
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+
+        if (selection.full) {
+          await downloadImage(
+            entry.photoFullUrl,
+            `${sanitizedName}_${sanitizedTitle}_full.jpg`
+          );
+          downloadCount++;
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+
+      console.log(`Downloaded ${downloadCount} photos`);
+    } catch (error) {
+      console.error('Failed to download selected photos:', error);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const getSelectedCount = () => {
+    let count = 0;
+    photoSelections.forEach(selection => {
+      if (selection.selfie) count++;
+      if (selection.full) count++;
+    });
+    return count;
+  };
+
   useEffect(() => {
     const fetchResults = async () => {
       try {
@@ -134,6 +235,19 @@ export default function ResultsPage({ params }: ResultsPageProps) {
 
         setResults(results);
         setTop3Overall(top3Overall || []);
+
+        // Initialize photo selections
+        const allEntries = results.flatMap((r: CategoryResult) => r.entries);
+        const selections = new Map<string, PhotoSelection>();
+        allEntries.forEach((entry: Registration) => {
+          selections.set(entry.id, {
+            entryId: entry.id,
+            entryName: `${entry.displayName} - ${entry.costumeTitle}`,
+            selfie: false,
+            full: false,
+          });
+        });
+        setPhotoSelections(selections);
       } catch (err) {
         console.error(err);
         setError('Failed to load results');
@@ -168,18 +282,136 @@ export default function ResultsPage({ params }: ResultsPageProps) {
         <p className="mt-2 text-lg text-muted-foreground">
           All entries ranked by votes in each category
         </p>
-        <div className="mt-4 flex justify-center">
+        <div className="mt-4 flex flex-col sm:flex-row justify-center gap-3">
           <Button
             onClick={downloadAllPhotos}
             disabled={downloading || results.length === 0}
             size="lg"
-            className="gap-2"
+            className="gap-2 w-full sm:w-auto"
+            variant="outline"
           >
             <Download className="h-5 w-5" />
-            {downloading ? 'Downloading...' : 'Download All Photos'}
+            {downloading ? 'Downloading...' : 'Download All'}
+          </Button>
+          <Button
+            onClick={openPhotoSelector}
+            disabled={downloading || results.length === 0}
+            size="lg"
+            className="gap-2 w-full sm:w-auto"
+          >
+            <CheckSquare className="h-5 w-5" />
+            Select Photos to Download
           </Button>
         </div>
       </div>
+
+      {/* Photo Selection Dialog */}
+      <Dialog open={showPhotoSelector} onOpenChange={setShowPhotoSelector}>
+        <DialogContent className="max-w-4xl w-[95vw] sm:w-full h-[90vh] sm:h-auto sm:max-h-[80vh] flex flex-col p-4 sm:p-6">
+          <DialogHeader className="flex-shrink-0">
+            <DialogTitle className="text-xl sm:text-2xl">Select Photos to Download</DialogTitle>
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              Choose which photos you want to download. Selected: <span className="font-semibold">{getSelectedCount()} photo{getSelectedCount() !== 1 ? 's' : ''}</span>
+            </p>
+          </DialogHeader>
+          
+          <div className="flex gap-2 mb-3 sm:mb-4 flex-shrink-0">
+            <Button onClick={selectAllPhotos} variant="outline" size="sm" className="gap-2 flex-1 sm:flex-initial">
+              <CheckSquare className="h-4 w-4" />
+              <span className="hidden xs:inline">Select All</span>
+              <span className="xs:hidden">All</span>
+            </Button>
+            <Button onClick={deselectAllPhotos} variant="outline" size="sm" className="gap-2 flex-1 sm:flex-initial">
+              <Square className="h-4 w-4" />
+              <span className="hidden xs:inline">Deselect All</span>
+              <span className="xs:hidden">None</span>
+            </Button>
+          </div>
+
+          <ScrollArea className="flex-1 -mx-4 sm:mx-0 px-4 sm:pr-4">
+            <div className="space-y-3 sm:space-y-4">
+              {results.flatMap(r => r.entries).map((entry) => {
+                const selection = photoSelections.get(entry.id);
+                if (!selection) return null;
+
+                return (
+                  <Card key={entry.id} className="p-3 sm:p-4">
+                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                      <div className="flex-shrink-0 w-20 h-20 sm:w-24 sm:h-24 mx-auto sm:mx-0 relative overflow-hidden rounded-lg border-2">
+                        <img
+                          src={entry.photoSelfieUrl}
+                          alt={entry.costumeTitle}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 text-center sm:text-left">
+                        <h3 className="font-semibold text-base sm:text-lg line-clamp-1">{entry.costumeTitle}</h3>
+                        <p className="text-xs sm:text-sm text-muted-foreground mb-3">by {entry.displayName}</p>
+                        <div className="flex flex-col sm:flex-row gap-3 sm:gap-6">
+                          <div 
+                            className="flex items-center justify-center sm:justify-start space-x-2 p-2 sm:p-0 rounded-lg sm:rounded-none bg-muted/50 sm:bg-transparent cursor-pointer"
+                            onClick={() => togglePhotoSelection(entry.id, 'selfie')}
+                          >
+                            <Checkbox
+                              id={`${entry.id}-selfie`}
+                              checked={selection.selfie}
+                              onCheckedChange={() => togglePhotoSelection(entry.id, 'selfie')}
+                              className="h-5 w-5 sm:h-4 sm:w-4"
+                            />
+                            <label
+                              htmlFor={`${entry.id}-selfie`}
+                              className="text-sm sm:text-sm font-medium leading-none cursor-pointer flex items-center gap-2"
+                            >
+                              <ImageIcon className="h-4 w-4" />
+                              Selfie Photo
+                            </label>
+                          </div>
+                          <div 
+                            className="flex items-center justify-center sm:justify-start space-x-2 p-2 sm:p-0 rounded-lg sm:rounded-none bg-muted/50 sm:bg-transparent cursor-pointer"
+                            onClick={() => togglePhotoSelection(entry.id, 'full')}
+                          >
+                            <Checkbox
+                              id={`${entry.id}-full`}
+                              checked={selection.full}
+                              onCheckedChange={() => togglePhotoSelection(entry.id, 'full')}
+                              className="h-5 w-5 sm:h-4 sm:w-4"
+                            />
+                            <label
+                              htmlFor={`${entry.id}-full`}
+                              className="text-sm sm:text-sm font-medium leading-none cursor-pointer flex items-center gap-2"
+                            >
+                              <ImageIcon className="h-4 w-4" />
+                              Full Photo
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          </ScrollArea>
+
+          <DialogFooter className="flex-shrink-0 flex-col sm:flex-row gap-2 mt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowPhotoSelector(false)}
+              className="w-full sm:w-auto order-2 sm:order-1"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={downloadSelectedPhotos} 
+              disabled={getSelectedCount() === 0}
+              className="gap-2 w-full sm:w-auto order-1 sm:order-2"
+            >
+              <Download className="h-4 w-4" />
+              Download {getSelectedCount()} Photo{getSelectedCount() !== 1 ? 's' : ''}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Top 3 Overall Section */}
       {top3Overall.length > 0 && (
