@@ -20,6 +20,16 @@ interface Registration {
   isWinner?: boolean;
 }
 
+interface OverallTopEntry {
+  id: string;
+  costumeTitle: string;
+  displayName: string;
+  photoSelfieUrl: string;
+  photoFullUrl: string;
+  totalVotes: number;
+  rank: number;
+}
+
 interface CategoryResult {
   category: Category;
   entries: Registration[];
@@ -35,6 +45,7 @@ export default function ResultsPage({ params }: ResultsPageProps) {
   const { eventId } = use(params);
 
   const [results, setResults] = useState<CategoryResult[]>([]);
+  const [top3Overall, setTop3Overall] = useState<OverallTopEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
@@ -97,7 +108,7 @@ export default function ResultsPage({ params }: ResultsPageProps) {
     }
   };
 
-  const downloadEntryPhotos = async (entry: Registration) => {
+  const downloadEntryPhotos = async (entry: Registration | OverallTopEntry) => {
     const sanitizedTitle = entry.costumeTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
     const sanitizedName = entry.displayName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
     
@@ -119,9 +130,10 @@ export default function ResultsPage({ params }: ResultsPageProps) {
       try {
         const resultsRes = await fetch(`/api/results/${eventId}`);
         if (!resultsRes.ok) throw new Error('Failed to fetch results');
-        const { results } = await resultsRes.json();
+        const { results, top3Overall } = await resultsRes.json();
 
         setResults(results);
+        setTop3Overall(top3Overall || []);
       } catch (err) {
         console.error(err);
         setError('Failed to load results');
@@ -168,6 +180,62 @@ export default function ResultsPage({ params }: ResultsPageProps) {
           </Button>
         </div>
       </div>
+
+      {/* Top 3 Overall Section */}
+      {top3Overall.length > 0 && (
+        <Card className="mb-8 overflow-hidden border-4 border-amber-500 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20">
+          <CardHeader className="bg-gradient-to-r from-amber-500 to-orange-500 text-white">
+            <CardTitle className="text-center text-2xl">
+              🏆 Top 3 Overall - Most Voted Costumes 🏆
+            </CardTitle>
+            <p className="text-center text-sm text-amber-50">
+              Ranked by total votes across all categories
+            </p>
+          </CardHeader>
+          <CardContent className="pt-8">
+            <div className="grid gap-6 grid-cols-1 md:grid-cols-3">
+              {top3Overall.map((entry) => (
+                <div 
+                  key={entry.id}
+                  className="relative flex flex-col space-y-3 rounded-lg border-2 border-amber-500 bg-white dark:bg-gray-950 p-4 shadow-lg"
+                >
+                  <Button
+                    onClick={() => downloadEntryPhotos(entry)}
+                    size="icon"
+                    variant="outline"
+                    className="absolute top-2 right-2 z-10 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
+                    title="Download photos"
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                  <div className="flex justify-center">
+                    <div className={`inline-flex items-center rounded-full px-4 py-2 text-lg font-bold text-white ${
+                      entry.rank === 1 ? 'bg-gradient-to-r from-yellow-400 to-yellow-600' :
+                      entry.rank === 2 ? 'bg-gradient-to-r from-gray-300 to-gray-500' :
+                      'bg-gradient-to-r from-orange-400 to-orange-600'
+                    }`}>
+                      {entry.rank === 1 ? '🥇 1st Place' : entry.rank === 2 ? '🥈 2nd Place' : '🥉 3rd Place'}
+                    </div>
+                  </div>
+                  <CostumeCard registration={entry} variant="static" />
+                  <div className="space-y-2 text-center">
+                    <h3 className="text-xl font-bold tracking-tight">{entry.costumeTitle}</h3>
+                    <p className="text-base text-muted-foreground">
+                      by {entry.displayName}
+                    </p>
+                    <div className="rounded-lg border-2 border-amber-500 bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-950/40 dark:to-orange-950/40 p-4">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Votes</p>
+                      <p className="text-3xl font-bold tracking-tight text-amber-600 dark:text-amber-400">
+                        {entry.totalVotes}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="space-y-8">
         {results.map((categoryResult) => (

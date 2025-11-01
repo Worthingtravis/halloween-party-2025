@@ -48,6 +48,40 @@ export async function GET(
       },
     });
 
+    // Calculate overall top 3 (total votes across all categories)
+    const overallVoteCounts = new Map<string, number>();
+    
+    voteCounts.forEach((vote) => {
+      const currentCount = overallVoteCounts.get(vote.targetRegistrationId) || 0;
+      overallVoteCounts.set(vote.targetRegistrationId, currentCount + vote._count._all);
+    });
+
+    const overallEntries = registrations.map((reg) => {
+      const totalVotes = overallVoteCounts.get(reg.id) || 0;
+      return {
+        registration: reg,
+        totalVotes,
+      };
+    });
+
+    // Sort by total votes and take top 3
+    overallEntries.sort((a, b) => {
+      if (b.totalVotes !== a.totalVotes) {
+        return b.totalVotes - a.totalVotes;
+      }
+      return a.registration.createdAt.getTime() - b.registration.createdAt.getTime();
+    });
+
+    const top3Overall = overallEntries.slice(0, 3).map((entry, index) => ({
+      id: entry.registration.id,
+      costumeTitle: entry.registration.costumeTitle,
+      displayName: entry.registration.attendee.displayName,
+      photoSelfieUrl: entry.registration.photoSelfieUrl,
+      photoFullUrl: entry.registration.photoFullUrl,
+      totalVotes: entry.totalVotes,
+      rank: index + 1,
+    }));
+
     // Build results by category
     const results = CATEGORIES.map((category) => {
       // Get all votes for this category
@@ -100,6 +134,7 @@ export async function GET(
 
     return NextResponse.json({
       eventId,
+      top3Overall,
       results,
     });
   } catch (error) {
